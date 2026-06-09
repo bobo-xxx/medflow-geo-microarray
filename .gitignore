@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.eggs/
+*.egg-info/
+
+# Conda envs
+.venv/
+env/
+
+# OS
+.DS_Store
+
+# Claude local settings
+.claude/settings.local.json
