@@ -12,12 +12,14 @@ This is a node package in the IRE agentic bioinformatics workflow framework. It 
 
 ## Development Environment
 
-All tools and languages are managed through **conda** as the top-level environment manager.
+This node has its own conda environment, declared in `env.yaml`. The framework's Execution Engine creates it automatically — during development, the node author creates and tests it manually.
 
 ```bash
-conda activate ire-product
+# Create and activate the node-specific environment
+conda env create -f env.yaml
+conda activate <env-name>    # from env.yaml's 'name' field
 
-# Python: use uv for package management inside conda env
+# Python: use uv for package management inside the conda env
 conda install -c conda-forge uv
 uv pip install <package>
 
@@ -28,8 +30,8 @@ conda install -c conda-forge r-base r-essentials
 
 ### Rules
 
-1. **Always activate the conda environment**: `conda activate ire-product`
-2. **Python packages**: use `uv pip install`. Lock with `uv pip freeze > requirements.txt`.
+1. **Use the node's own env**: create from `env.yaml`, activate it for all development work.
+2. **Python packages**: use `uv pip install` inside the node's conda env.
 3. **R packages**: prefer `conda install -c conda-forge r-<package>`.
 4. **All languages**: install via conda-forge first.
 5. **No hardcoded secrets**: node packages are open-source. No API keys, tokens, or credentials.
