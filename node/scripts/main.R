@@ -22,6 +22,7 @@ source(file.path(script_dir, "species.R"))
 source(file.path(script_dir, "annotate.R"))
 source(file.path(script_dir, "fetch.R"))
 source(file.path(script_dir, "qc.R"))
+source(file.path(script_dir, "clean.R"))
 
 # -------------------------------------------------------------------
 # Argument parsing
@@ -62,6 +63,7 @@ parse_args <- function(args = commandArgs(trailingOnly = TRUE)) {
     gse_id          = NULL,
     outdir          = ".",
     input           = NULL,
+    output          = NULL,
     proxy           = NULL,
     api_key         = {v <- Sys.getenv("NCBI_API_KEY"); if (v == "") NULL else v}
   )
@@ -83,6 +85,9 @@ parse_args <- function(args = commandArgs(trailingOnly = TRUE)) {
     } else if (key == "--input") {
       i <- i + 1
       if (i <= length(remaining)) opts$input <- remaining[i]
+    } else if (key == "--output") {
+      i <- i + 1
+      if (i <= length(remaining)) opts$output <- remaining[i]
     } else if (key == "--proxy") {
       i <- i + 1
       if (i <= length(remaining)) opts$proxy <- remaining[i]
@@ -95,6 +100,8 @@ parse_args <- function(args = commandArgs(trailingOnly = TRUE)) {
       opts$outdir <- sub("^--outdir=", "", key)
     } else if (startsWith(key, "--input=")) {
       opts$input <- sub("^--input=", "", key)
+    } else if (startsWith(key, "--output=")) {
+      opts$output <- sub("^--output=", "", key)
     } else if (startsWith(key, "--proxy=")) {
       opts$proxy <- sub("^--proxy=", "", key)
     } else if (startsWith(key, "--api-key=")) {
@@ -174,11 +181,27 @@ do_qc <- function(opts) {
                 metrics = result$metrics, flags = result$flags)
 }
 
-#' Clean subcommand — stub
+#' Clean subcommand
 do_clean <- function(opts) {
   report_info(sprintf("Cleaning %s...", opts$input))
-  report_info("Subcommand 'clean' not yet implemented")
-  report_result("success", files = list(), metadata = list())
+  output <- if (!is.null(opts$output)) opts$output else sub("\\.csv$", "_clean.csv", opts$input)
+  result <- run_clean(opts$input, output)
+
+  if (result$status == "error") {
+    report_error(result$msg)
+    return(invisible(NULL))
+  }
+
+  report_info(sprintf("Input scale: %s, applied: %s, output scale: %s",
+    result$input_scale, result$applied_transform, result$output_scale))
+
+  report_result(result$status,
+    files = list(list(path = result$output_path, rows = result$n_rows, cols = result$n_cols)),
+    metadata = list(
+      input_scale       = result$input_scale,
+      output_scale      = result$output_scale,
+      applied_transform = result$applied_transform
+    ))
 }
 
 # -------------------------------------------------------------------

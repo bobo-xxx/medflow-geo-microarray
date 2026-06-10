@@ -47,10 +47,14 @@ describe("main.R CLI dispatch", {
     expect_equal(exit_code, 0)
   })
 
-  it("accepts clean subcommand with --input", {
+  it("accepts clean subcommand with valid --input", {
+    m <- matrix(runif(100 * 4, 2, 14), nrow = 100, ncol = 4)
+    colnames(m) <- paste0("s", 1:4)
+    write.csv(m, "test_clean_main.csv", row.names = TRUE)
     exit_code <- system2("Rscript",
-      c(main_script, "clean", "--input", "test.csv"),
+      c(main_script, "clean", "--input", "test_clean_main.csv"),
       stdout = FALSE, stderr = FALSE)
+    unlink(c("test_clean_main.csv", "test_clean_main_clean.csv"))
     expect_equal(exit_code, 0)
   })
 })
