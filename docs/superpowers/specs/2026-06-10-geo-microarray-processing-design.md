@@ -16,7 +16,7 @@ This node fetches and processes GEO microarray expression data, adapted from the
 | Language | R + Bioconductor | Deep dependency on `oligo::rma()`, `limma::read.maimages()`, `GEOquery`, `Biobase::ExpressionSet` — no Python equivalents |
 | Architecture | Functional modules (Option B) | Minimal abstraction, close to original code, fits Bioconductor idioms. `main.R` dispatcher + `fetch.R`, `normalize.R`, `annotate.R`, `validate.R`, `report.R` |
 | Subcommands | `fetch`, `qc`, `clean` (Option A) | Each independently callable; orchestrator wires them. Agents get per-stage decision points for error handling |
-| Multi-platform output | Per-platform files (Option A) | Established pattern (both `virtualArray` and `crossmeta` expect per-platform input). Merging deferred to downstream node or future `add-platform-merge` change |
+| Multi-platform output | Per-platform files (Option A) | Established pattern (both `virtualArray` and `crossmeta` expect per-platform input). Merging deferred to a separate merge node |
 | R versions | 4.3 / BioC 3.18 (prod) + 4.5 / BioC 3.20 (forward-compat) | Bioconductor is tightly coupled to R version; test both |
 | Conda channels | Upstream only in `env.yaml` | Mirrors configured locally via `conda config`, never committed |
 | Testing | Hybrid (Option C) | Pure functions → unit tests; stateful modules → module-level with fixture RDS; `main.R` dispatch → integration tests |
@@ -305,7 +305,6 @@ Rscript scripts/main.R clean --input ./output/GSE100155/expr_gene_GSE100155_GPL5
 2. **`port-fetch-geo`** — `fetch.R`, `normalize.R`, `annotate.R`, `validate.R`, `report.R` ported from original, NDJSON reporting
 3. **`add-qc-subcommand`** — standalone QC subcommand, expression matrix validation
 4. **`add-clean-subcommand`** — downstream cleaning/normalization
-5. *(future)* **`add-platform-merge`** — optional union merge for cross-platform needs
 
 ## Reference
 
