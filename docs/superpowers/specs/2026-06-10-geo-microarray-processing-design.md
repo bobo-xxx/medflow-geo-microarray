@@ -23,6 +23,7 @@ This node fetches and processes GEO microarray expression data, adapted from the
 | Dev approach | TDD per OpenSpec change | Sequential pipeline-shaped work; CLAUDE.md mandates TDD |
 | API key | `NCBI_API_KEY` env var, fallback to `--api-key` config | No hardcoded secrets; runtime resolution |
 | Proxy | `--proxy` with `bind: config` | Original hardcoded `localhost:1086` removed |
+| Species | Human (9606), mouse (10090), rat (10116) as tier-1; others pass-through with warning | Most GEO expression data is from these three; species-specific annotation packages |
 
 ## Architecture
 
@@ -93,6 +94,116 @@ Output         Per-platform CSV files:
                {"level":"info","msg":"..."}
                {"level":"result","status":"...",...}
 ```
+
+## Species Support
+
+The node detects organism from GEO metadata (`experimentData(eset)@other$sample_taxid`) and routes to the appropriate annotation database:
+
+| TaxID | Species | Annotation Package | Tier |
+|---|---|---|---|
+| 9606 | *Homo sapiens* | `org.Hs.eg.db` | 1 — primary |
+| 10090 | *Mus musculus* | `org.Mm.eg.db` | 1 — primary |
+| 10116 | *Rattus norvegicus* | `org.Rn.eg.db` | 1 — primary |
+| Other | Any | GPL table gene symbols only | 2 — pass-through with warning |
+
+Tier-1 species get validated gene symbol mapping against the species annotation database. Tier-2 (other) species rely solely on the GPL annotation table's gene symbol column — if it's missing, probe IDs are used as gene symbols with a warning.
+
+## Handling Logic (Mermaid)
+
+```mermaid
+flowchart TD
+    A["CLI: Rscript scripts/main.R fetch --gse-id GSE12345"] --> B{Subcommand}
+    B -->|fetch| C
+
+    subgraph FETCH["fetch.R — 5-Tier Fallback"]
+        C["1. Local cache?"]
+        C -->|"yes, valid"| D1[Load cached files]
+        C -->|no| E["2. Series matrix?"]
+        E -->|"GSEMatrix=TRUE"| D2[GEOquery::getGEO]
+        E -->|no| F["3. Supplementary?"]
+        F -->|"*.txt.gz found"| D3[Author-processed matrix]
+        F -->|no| G["4. Raw CEL files?"]
+        G -->|"*.CEL found"| H{Platform?}
+        H -->|Affymetrix| H1[oligo::rma]
+        H -->|"Agilent FE"| H2[limma::read.maimages]
+        H -->|Illumina| H3[illuminaio::readIDAT]
+        G -->|no| I["5. Metadata only"]
+        C -->|"BPM+IDAT"| J[SKIP: Methylation detected]
+    end
+
+    D1 --> K{Detect species}
+    D2 --> K
+    D3 --> K
+    H1 --> K
+    H2 --> K
+    H3 --> K
+    I --> I1[Return metadata, no expression]
+    J --> J1[Exit: skipped_methylation]
+
+    K -->|"taxId 9606"| S1[Homo sapiens]
+    K -->|"taxId 10090"| S2[Mus musculus]
+    K -->|"taxId 10116"| S3[Rattus norvegicus]
+    K -->|other| S4[Other — process, warn]
+
+    subgraph NORM["normalize.R"]
+        S1 --> L[detect_expr_type]
+        S2 --> L
+        S3 --> L
+        S4 --> L
+        L -->|"99pct > 100"| M1["raw → log2(x+1)"]
+        L -->|"mean ≈ 0, 99pct < 10"| M2["centered → shift ≥ 0"]
+        L -->|else| M3[log → pass-through]
+    end
+
+    subgraph ANNO["annotate.R"]
+        M1 --> N[get_gpl_annotation]
+        M2 --> N
+        M3 --> N
+        N -->|"GPL downloaded"| O[probe_id → gene_symbol mapping]
+        N -->|"GPL failed"| N1[Warning: probe IDs as gene symbols]
+        O --> P[aggregate_probe_to_gene]
+        P -->|"/// split"| P1[unnest multi-gene probes]
+        P1 --> P2[mean per gene × sample]
+    end
+
+    subgraph VAL["validate.R"]
+        N1 --> Q[validate_expr_matrix]
+        P2 --> Q
+        Q -->|"rows > 0, cols > 0"| Q1{"Values ≤ 1e50?"}
+        Q1 -->|yes| R[validate_gene_expression]
+        Q1 -->|no| Q2[Reject: extreme values]
+    end
+
+    subgraph OUT["Output"]
+        R --> T[Per-platform CSVs]
+        T --> T1["expr_probe_{GSE}_{GPL}.csv"]
+        T --> T2["expr_gene_{GSE}_{GPL}.csv"]
+        T1 --> U[NDJSON to stdout]
+        T2 --> U
+        U --> U1["{level:result, status:success_matrix, ...}"]
+        Q2 --> U2["{level:result, status:error, ...}"]
+        I1 --> U3["{level:result, status:metadata_only, ...}"]
+        J1 --> U4["{level:result, status:skipped_methylation, ...}"]
+    end
+```
+
+## SKILL.md — Skill-Like Node Structure
+
+The SKILL.md body narrative follows the skill pattern from the original reference, adapted to node-package v2 conventions:
+
+**Body sections** (human/LLM narrative, below the YAML frontmatter):
+
+1. **Overview** — one-paragraph summary: what this node does and when an agent should select it
+2. **When to Use** — trigger phrases and scenarios (same as original: "fetch GEO", "download microarray", "get GSE")
+3. **Key Features** — 5-tier fallback, platform auto-detection, methylation skip, multi-GPL support, probe-to-gene aggregation
+4. **Supported Platforms** — table from PLATFORMS.md (Affymetrix/Agilent/Illumina/TXT)
+5. **Species Support** — human/mouse/rat with taxID reference, pass-through for others
+6. **Data Priority** — ASCII flowchart of the 5-tier fallback (from original SKILL.md)
+7. **Usage** — CLI examples for `fetch`, `qc`, `clean` subcommands
+8. **Parameters** — detailed descriptions of each `--flag` (complements frontmatter `parameters:`)
+9. **Output** — file naming convention, NDJSON format, status codes
+10. **Error Handling** — exception patterns cross-referenced to ERROR_CODES.md
+11. **Integration** — how this node chains with downstream nodes (`qc` → `clean` → analysis)
 
 ## Subcommands
 
