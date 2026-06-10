@@ -1,11 +1,11 @@
 library(testthat)
 
 # Source dependencies in order (fetch.R depends on all of these)
-source("../../scripts/normalize.R")
-source("../../scripts/validate.R")
-source("../../scripts/species.R")
-source("../../scripts/annotate.R")
-source("../../scripts/fetch.R")
+source("../../node/scripts/normalize.R")
+source("../../node/scripts/validate.R")
+source("../../node/scripts/species.R")
+source("../../node/scripts/annotate.R")
+source("../../node/scripts/fetch.R")
 
 describe("is_methylation", {
 

@@ -10,7 +10,7 @@ This is a node package in the IRE agentic bioinformatics workflow framework. It 
 
 ### Current Status: Pre-implementation
 
-The node package files (`SKILL.md`, `env.yaml`, `scripts/`, `references/`) have **not yet been created**. The reference implementation lives in `original/geo-microarray-fetch.zip` — a complete, working R implementation that must be adapted to the node-package v2 format.
+The node package files (`node/SKILL.md`, `node/env.yaml`, `node/scripts/`, `node/references/`) have **not yet been created**. The reference implementation lives in `original/geo-microarray-fetch.zip` — a complete, working R implementation that must be adapted to the node-package v2 format.
 
 ## Reference Implementation
 
@@ -67,17 +67,17 @@ These inform what goes into `env.yaml`.
 
 ## Development Environment
 
-This node has its own conda environment, declared in `env.yaml`. The framework's Execution Engine creates it automatically — during development, the node author creates and tests it manually.
+This node has its own conda environment, declared in `node/env.yaml`. The framework's Execution Engine creates it automatically — during development, the node author creates and tests it manually.
 
-**Dual R version testing**: `env.yaml` targets R 4.3 / Bioconductor 3.18 (production). `env-4.5.yaml` targets R 4.5 / Bioconductor 3.20 (forward-compat). CI tests both.
+**Dual R version testing**: `node/env.yaml` targets R 4.3 / Bioconductor 3.18 (production). `node/env-4.5.yaml` targets R 4.5 / Bioconductor 3.20 (forward-compat). CI tests both.
 
 ```bash
 # Create and activate the node-specific environment
-conda env create -f env.yaml
-conda activate geo-microarray-processing      # name from env.yaml
+conda env create -f node/env.yaml
+conda activate geo-microarray-processing      # name from node/env.yaml
 
 # Forward-compat testing
-conda env create -f env-4.5.yaml
+conda env create -f node/env-4.5.yaml
 conda activate geo-microarray-processing-4.5
 
 # Run tests in either env
@@ -152,11 +152,11 @@ This node is primarily R. Key commands once the package is created:
 
 ```bash
 # Run the node
-Rscript scripts/main.R fetch --gse-id GSE100155 --outdir ./output
+Rscript node/scripts/main.R fetch --gse-id GSE100155 --outdir ./output
 
 # Run with subcommands (when multi-action)
-Rscript scripts/main.R qc --input ./output/expr_gene_GSE100155.csv
-Rscript scripts/main.R clean --input ./output/expr_gene_GSE100155.csv
+Rscript node/scripts/main.R qc --input ./output/expr_gene_GSE100155.csv
+Rscript node/scripts/main.R clean --input ./output/expr_gene_GSE100155.csv
 
 # Run a single test
 Rscript -e 'testthat::test_file("tests/testthat/test-fetch.R")'
@@ -182,14 +182,18 @@ This project follows the **node package v2 spec** at `openspec/specs/node-packag
 
 ```
 node-package@version/
-├── SKILL.md                   # Frontmatter (agent contract) + body (human narrative)
-├── env.yaml                   # Declarative conda/mamba environment
-├── scripts/
-│   ├── main.<ext>             # Single entry point (.py preferred)
-│   ├── input_validation.<ext>  # Optional
-│   ├── output_validation.<ext> # Optional
-│   └── ...                    # Internal helpers called by main
-└── references/                # Optional static assets
+├── node/                      # Package root (what core consumes)
+│   ├── SKILL.md               # Frontmatter (agent contract) + body (human narrative)
+│   ├── env.yaml               # Declarative conda/mamba environment
+│   ├── scripts/
+│   │   ├── main.<ext>         # Single entry point (.py preferred)
+│   │   ├── input_validation.<ext>  # Optional
+│   │   ├── output_validation.<ext> # Optional
+│   │   └── ...                # Internal helpers called by main
+│   └── references/            # Optional static assets
+├── tests/                     # Test suite
+├── docs/                      # Design docs, plans
+└── openspec/                  # Project governance
 ```
 
 **SKILL.md key rules:**

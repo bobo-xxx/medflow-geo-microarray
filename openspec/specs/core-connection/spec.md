@@ -8,14 +8,31 @@ Every node lives in its own git repository and connects to the IRE core framewor
 
 ### Requirement: Repository Structure
 
-The node repo SHALL contain the package files at the root: `SKILL.md`, `env.yaml`, `scripts/`. The version is encoded in the registry.yaml in the core, NOT in the repo directory name.
+The node repo SHALL contain the package files in a `node/` subdirectory: `node/SKILL.md`, `node/env.yaml`, `node/scripts/`. This separates the node package (what the framework consumes) from project-level files (CLAUDE.md, docs/, openspec/, tests/, .github/). The version is encoded in the registry.yaml in the core, NOT in the repo directory name.
+
+```
+node-repo/
+├── node/
+│   ├── SKILL.md              # Agent contract (frontmatter + body)
+│   ├── env.yaml              # Declarative conda environment
+│   ├── scripts/              # Entry point + internal modules
+│   └── references/           # Optional static assets
+├── tests/                    # Test suite
+├── docs/                     # Design docs, plans
+├── openspec/                 # Project governance
+├── .claude/                  # Claude Code configuration
+├── .github/                  # CI workflows
+├── CLAUDE.md                 # Developer guidance
+└── .gitignore
+```
 
 #### Scenario: Core clones a node
 
 - **WHEN** the core's `ire sync` clones this repo
 - **THEN** it SHALL checkout a pinned commit
-- **AND** place it at `nodes/<name>@<version>/` relative to the core root
-- **AND** verify sha256 integrity of the package
+- **AND** extract the `node/` subdirectory (if present) as the package root; if `node/` is absent, use the repo root
+- **AND** place the package at `nodes/<name>@<version>/` relative to the core root
+- **AND** verify sha256 integrity of the package files
 
 ### Requirement: Registry Entry
 
@@ -41,7 +58,7 @@ nodes:
 #### Scenario: Node author tests locally
 
 - **WHEN** developing this node
-- **THEN** the author SHALL place the package directory at `nodes/<name>@<version>/` in a local core checkout
+- **THEN** the author SHALL symlink or copy the `node/` subdirectory to `nodes/<name>@<version>/` in a local core checkout
 - **AND** the core's `NodeRegistry.discover()` SHALL index it for testing without `ire sync`
 
 ### Requirement: No Core Code in Node Repo
@@ -51,7 +68,7 @@ The node repo SHALL contain only node package files. Framework code, protocol do
 #### Scenario: Node repo boundaries
 
 - **WHEN** inspecting a node repo
-- **THEN** it SHALL contain: `SKILL.md`, `env.yaml`, `scripts/`, `references/` (optional), `openspec/` (project governance)
+- **THEN** it SHALL contain: `node/SKILL.md`, `node/env.yaml`, `node/scripts/`, `node/references/` (optional), `openspec/` (project governance)
 - **AND** it SHALL NOT contain: `registry.yaml` (core), `specs/m2m/` (core), framework engine code, or other nodes
 
 ### Requirement: GitHub Token

@@ -1,6 +1,6 @@
 library(testthat)
 
-source("../../scripts/species.R")
+source("../../node/scripts/species.R")
 
 describe("detect_species", {
 

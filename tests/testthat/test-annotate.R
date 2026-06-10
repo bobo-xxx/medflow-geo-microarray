@@ -1,6 +1,6 @@
 library(testthat)
 
-source("../../scripts/annotate.R")
+source("../../node/scripts/annotate.R")
 
 describe("extract_gene_from_assignment", {
 

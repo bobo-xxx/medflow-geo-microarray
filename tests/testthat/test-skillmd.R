@@ -4,7 +4,7 @@ library(testthat)
 source("helpers.R")
 
 # Path to SKILL.md relative to tests/testthat/
-skillmd_path <- "../../SKILL.md"
+skillmd_path <- "../../node/SKILL.md"
 
 describe("SKILL.md", {
 

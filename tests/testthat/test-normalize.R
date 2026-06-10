@@ -1,6 +1,6 @@
 library(testthat)
 
-source("../../scripts/normalize.R")
+source("../../node/scripts/normalize.R")
 
 describe("detect_expr_type", {
 

@@ -3,7 +3,7 @@ library(testthat)
 source("helpers.R")
 
 # Path to main.R relative to tests/testthat/
-main_script <- "../../scripts/main.R"
+main_script <- "../../node/scripts/main.R"
 
 describe("main.R CLI dispatch", {
 

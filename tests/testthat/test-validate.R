@@ -1,6 +1,6 @@
 library(testthat)
 
-source("../../scripts/validate.R")
+source("../../node/scripts/validate.R")
 
 describe("validate_expr_matrix", {
 
