@@ -118,6 +118,12 @@ fetch_geo_data <- function(opts) {
       expr_matrix <- normalize_expr_matrix(expr_matrix)
       colnames(expr_matrix) <- make.names(colnames(expr_matrix), unique = TRUE)
 
+      # Post-normalization validation (catch NaN/Inf from normalization bugs)
+      post_val <- validate_expr_matrix(expr_matrix)
+      if (!post_val$valid) {
+        result$warnings <- c(result$warnings, paste("Post-normalization:", post_val$reason))
+      }
+
       # Save probe-level
       probe_file <- file.path(out_gse_dir, paste0("expr_probe_", gse_id, gpl_suffix, ".csv"))
       write.csv(expr_matrix, file = probe_file, row.names = TRUE)

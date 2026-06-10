@@ -28,7 +28,10 @@ detect_expr_type <- function(x) {
 normalize_expr_matrix <- function(x) {
   type <- detect_expr_type(x)
 
-  if (type == "raw") x <- log2(x + 1e-6)
+  if (type == "raw") {
+    x <- pmax(x, 0)  # clamp negative background-subtracted values
+    x <- log2(x + 1e-6)
+  }
 
   x
 }
