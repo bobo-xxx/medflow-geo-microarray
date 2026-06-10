@@ -16,3 +16,8 @@ env/
 
 # Superpowers brainstorm artifacts
 .superpowers/
+
+# Test output artifacts (GSE downloads, CSV files from smoke tests)
+GSE*/
+tests/testthat/GSE*/
+tests/testthat/_snaps/
