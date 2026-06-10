@@ -109,15 +109,33 @@ The node detects organism from GEO metadata (`experimentData(eset)@other$sample_
 
 Tier-1 species get validated gene symbol mapping against the species annotation database. Tier-2 (other) species use the annotation fallback chain below.
 
-### Gene Annotation Fallback Strategy (4-Tier)
+### Gene Annotation Fallback Strategy (5-Tier)
 
-Some platforms (e.g., GPL16686) lack gene symbol columns in their GPL annotation, providing only `GB_ACC` (GenBank accession). The annotation module tries four sources in order:
+Some platforms lack direct gene symbol columns in their annotation. Common patterns:
+
+| Platform Example | Issue | Solution |
+|---|---|---|
+| GPL16686 | Only `GB_ACC` (GenBank accession) in GPL table | AnnoProbe pipe alignment (Tier 4) |
+| GPL17586 | `gene_assignment` column instead of `Gene Symbol` | Parse `"NM_// SYMBOL // ..."` (Tier 2) |
+| Unknown GPL | No annotation columns at all | Probe IDs as gene symbols (Tier 5) |
+
+The annotation module tries five sources in order:
 
 ```
-1. fData() Gene Symbol column       — fast, already in ExpressionSet
-2. GPL annotation table              — GEOquery::Table(getGEO(GPL))
-3. AnnoProbe pipe alignment          — probe FASTA → genome → GENCODE (147 platforms)
-4. Probe IDs as gene symbols         — last resort, with warning
+1. fData() direct column          — Gene Symbol / GENE_SYMBOL / Symbol
+2. fData() gene_assignment        — parse "ACC // SYMBOL // desc // ..." → extract field 2
+3. GPL annotation table           — GEOquery::Table(getGEO(GPL))
+4. AnnoProbe pipe alignment       — probe FASTA → genome → GENCODE (147 platforms)
+5. Probe IDs as gene symbols      — last resort, with warning
+```
+
+**`gene_assignment` parsing**: The standard Affymetrix format is `"Accession // Symbol // Description // ..."` where fields are separated by ` // ` (space-double-slash-space). The extraction function splits on this delimiter and takes the second field.
+
+```r
+extract_gene_from_assignment <- function(x) {
+  parts <- strsplit(as.character(x), " // ", fixed = TRUE)
+  vapply(parts, function(p) if (length(p) >= 2) trimws(p[2]) else NA_character_, "")
+}
 ```
 
 **AnnoProbe** (`r-annoprobe`, CRAN) covers 147 expression array platforms across human/mouse/rat with three annotation modes. The `pipe` mode (probe sequences aligned to reference genome, annotated via GENCODE) provides the most complete and up-to-date gene symbol coverage, especially for platforms like GPL16686 where the GPL table only has GB_ACC.
