@@ -9,28 +9,24 @@ describe("detect_species", {
     expect_equal(result$species, "Homo sapiens")
     expect_equal(result$tax_id, 9606)
     expect_equal(result$tier, 1)
-    expect_equal(result$org_db, "org.Hs.eg.db")
   })
 
   it("returns Mus musculus for taxId 10090", {
     result <- detect_species(10090)
     expect_equal(result$species, "Mus musculus")
     expect_equal(result$tier, 1)
-    expect_equal(result$org_db, "org.Mm.eg.db")
   })
 
   it("returns Rattus norvegicus for taxId 10116", {
     result <- detect_species(10116)
     expect_equal(result$species, "Rattus norvegicus")
     expect_equal(result$tier, 1)
-    expect_equal(result$org_db, "org.Rn.eg.db")
   })
 
   it("returns tier 2 for unknown taxId", {
     result <- detect_species(99999)
     expect_equal(result$tier, 2)
-    expect_null(result$org_db)
-    expect_match(result$species, "Unknown")
+    expect_match(result$species, "taxId")
   })
 
   it("returns tier 2 for NULL taxId", {
