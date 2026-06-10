@@ -150,6 +150,11 @@ do_fetch <- function(opts) {
       files <- c(files, list(list(path = f)))
     }
   }
+  if (!is.null(result$pheno_file)) {
+    for (f in result$pheno_file) {
+      files <- c(files, list(list(path = f)))
+    }
+  }
 
   if (length(result$warnings) > 0) {
     for (w in result$warnings) {
