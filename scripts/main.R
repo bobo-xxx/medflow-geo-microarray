@@ -13,7 +13,14 @@
 
 # Resolve script directory for relative sourcing (works from any CWD)
 script_dir <- dirname(normalizePath(sub("^--file=", "", grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE))))
+
+# Source modules in dependency order (fetch.R depends on all others)
 source(file.path(script_dir, "report.R"))
+source(file.path(script_dir, "normalize.R"))
+source(file.path(script_dir, "validate.R"))
+source(file.path(script_dir, "species.R"))
+source(file.path(script_dir, "annotate.R"))
+source(file.path(script_dir, "fetch.R"))
 
 # -------------------------------------------------------------------
 # Argument parsing
@@ -112,11 +119,37 @@ parse_args <- function(args = commandArgs(trailingOnly = TRUE)) {
 # Subcommand stubs (filled in by port-fetch-geo, add-qc, add-clean)
 # -------------------------------------------------------------------
 
-#' Fetch subcommand — stub
+#' Fetch subcommand
 do_fetch <- function(opts) {
   report_info(sprintf("Fetching GEO data for %s...", opts$gse_id))
-  report_info("Subcommand 'fetch' not yet implemented")
-  report_result("success_matrix", files = list(), metadata = list())
+  result <- fetch_geo_data(opts)
+
+  if (result$status == "error") {
+    err_msg <- paste(unlist(result$errors), collapse = "; ")
+    report_error(err_msg)
+    return(invisible(NULL))
+  }
+
+  # Build file list for NDJSON report
+  files <- list()
+  if (!is.null(result$probe_file)) {
+    for (f in result$probe_file) {
+      files <- c(files, list(list(path = f)))
+    }
+  }
+  if (!is.null(result$gene_file)) {
+    for (f in result$gene_file) {
+      files <- c(files, list(list(path = f)))
+    }
+  }
+
+  if (length(result$warnings) > 0) {
+    for (w in result$warnings) {
+      report_info(sprintf("Warning: %s", w))
+    }
+  }
+
+  report_result(result$status, files = files, metadata = result$metadata)
 }
 
 #' QC subcommand — stub

@@ -132,7 +132,7 @@ aggregate_probe_to_gene <- function(expr_matrix, gpl_table) {
     pivot_longer(cols = -probe_id, names_to = "sample", values_to = "expr")
 
   expr_gene <- expr_long %>%
-    inner_join(probe2gene, by = "probe_id") %>%
+    inner_join(probe2gene, by = "probe_id", relationship = "many-to-many") %>%
     group_by(gene_symbol, sample) %>%
     summarise(expr = mean(expr, na.rm = TRUE), .groups = "drop") %>%
     mutate(expr = ifelse(is.nan(expr), NA_real_, expr)) %>%
