@@ -26,13 +26,13 @@ outputs:
       Gene-level expression matrix aggregated from probes via mean.
       Gene symbols as rows, samples as columns. One file per platform.
 
-  - name: phenotype_{gse_id}_{gpl}.csv
+  - name: metadata_{gse_id}_{gpl}.csv
     format: csv
-    semantic_type: sample_phenotype_table
+    semantic_type: sample_metadata_table
     description: >
-      Sample-level phenotype metadata (pData from ExpressionSet). Contains
-      clinical covariates, group labels, and experimental factors for
-      downstream grouping and co-factor selection. One file per platform.
+      Sample-level metadata (pData from ExpressionSet). Contains clinical
+      covariates, group labels, and experimental factors for downstream
+      grouping and co-factor selection. One file per platform.
 
 entry: scripts/main.R
 
@@ -252,7 +252,7 @@ output/
 └── GSE12345/
     ├── expr_probe_GSE12345_GPL570.csv    # Probe-level (probes × samples)
     ├── expr_gene_GSE12345_GPL570.csv     # Gene-level (genes × samples)
-    ├── phenotype_GSE12345_GPL570.csv     # Sample metadata (pData)
+    ├── metadata_GSE12345_GPL570.csv       # Sample metadata (pData)
     └── suppl/                             # Downloaded supplementary files
 ```
 

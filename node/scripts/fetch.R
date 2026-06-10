@@ -75,7 +75,7 @@ fetch_geo_data <- function(opts) {
     gse_id     = gse_id,
     probe_file = NULL,
     gene_file  = NULL,
-    pheno_file = NULL,
+    meta_file = NULL,
     metadata   = list(),
     warnings   = list(),
     errors     = list()
@@ -204,9 +204,9 @@ fetch_geo_data <- function(opts) {
       # Phenotype data (sample-level metadata for grouping/co-factors)
       pdata <- pData(eset)
       if (!is.null(pdata) && nrow(pdata) > 0) {
-        pheno_file <- file.path(out_gse_dir, paste0("phenotype_", gse_id, gpl_suffix, ".csv"))
-        write.csv(pdata, file = pheno_file, row.names = TRUE)
-        result$pheno_file <- c(result$pheno_file, pheno_file)
+        meta_file <- file.path(out_gse_dir, paste0("metadata_", gse_id, gpl_suffix, ".csv"))
+        write.csv(pdata, file = meta_file, row.names = TRUE)
+        result$meta_file <- c(result$meta_file, meta_file)
       }
 
       # Metadata
