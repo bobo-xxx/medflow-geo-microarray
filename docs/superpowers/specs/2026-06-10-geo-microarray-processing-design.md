@@ -20,6 +20,7 @@ This node fetches and processes GEO microarray expression data, adapted from the
 | R versions | 4.3 / BioC 3.18 (prod) + 4.5 / BioC 3.20 (forward-compat) | Bioconductor is tightly coupled to R version; test both |
 | Conda channels | Upstream only in `env.yaml` | Mirrors configured locally via `conda config`, never committed |
 | Testing | Hybrid (Option C) | Pure functions → unit tests; stateful modules → module-level with fixture RDS; `main.R` dispatch → integration tests |
+| Annotation | 4-tier fallback with AnnoProbe | fData → GPL table → AnnoProbe pipe → probe IDs; handles GB_ACC-only platforms like GPL16686 |
 | Dev approach | TDD per OpenSpec change | Sequential pipeline-shaped work; CLAUDE.md mandates TDD |
 | API key | `NCBI_API_KEY` env var, fallback to `--api-key` config | No hardcoded secrets; runtime resolution |
 | Proxy | `--proxy` with `bind: config` | Original hardcoded `localhost:1086` removed |
@@ -106,7 +107,35 @@ The node detects organism from GEO metadata (`experimentData(eset)@other$sample_
 | 10116 | *Rattus norvegicus* | `org.Rn.eg.db` | 1 — primary |
 | Other | Any | GPL table gene symbols only | 2 — pass-through with warning |
 
-Tier-1 species get validated gene symbol mapping against the species annotation database. Tier-2 (other) species rely solely on the GPL annotation table's gene symbol column — if it's missing, probe IDs are used as gene symbols with a warning.
+Tier-1 species get validated gene symbol mapping against the species annotation database. Tier-2 (other) species use the annotation fallback chain below.
+
+### Gene Annotation Fallback Strategy (4-Tier)
+
+Some platforms (e.g., GPL16686) lack gene symbol columns in their GPL annotation, providing only `GB_ACC` (GenBank accession). The annotation module tries four sources in order:
+
+```
+1. fData() Gene Symbol column       — fast, already in ExpressionSet
+2. GPL annotation table              — GEOquery::Table(getGEO(GPL))
+3. AnnoProbe pipe alignment          — probe FASTA → genome → GENCODE (147 platforms)
+4. Probe IDs as gene symbols         — last resort, with warning
+```
+
+**AnnoProbe** (`r-annoprobe`, CRAN) covers 147 expression array platforms across human/mouse/rat with three annotation modes. The `pipe` mode (probe sequences aligned to reference genome, annotated via GENCODE) provides the most complete and up-to-date gene symbol coverage, especially for platforms like GPL16686 where the GPL table only has GB_ACC.
+
+## Test Datasets
+
+Six real GEO datasets selected to cover all code paths:
+
+| # | GSE | Species | Platform | Samples | Tests |
+|---|---|---|---|---|---|
+| 1 | **GSE318047** | Human | GPL570 | 12 | Standard annotation (Gene Symbol in fData) |
+| 2 | **GSE156508** | Human | GPL16686 | 12 | No gene symbol — GB_ACC only, tests AnnoProbe fallback |
+| 3 | **GSE11381** | Mouse | GPL339 | 12 | Mouse single-platform |
+| 4 | **GSE4105** | Rat | GPL85 | 6 | Rat single-platform |
+| 5 | **GSE84422** | Human | GPL96+97+570 | ~51 | Multi-platform (3 GPLs in one series) |
+| 6 | **GSE42861** | Human | GPL13534 (450k) | ~12 | Methylation skip (BPM+IDAT) |
+
+All three tier-1 species, six distinct platforms, annotation-rich (GPL570) vs annotation-sparse (GPL16686), multi-platform output, and methylation detection — all exercised with real, publicly available data.
 
 ## Handling Logic (Mermaid)
 

@@ -6,7 +6,9 @@
 
 **Architecture:** `scripts/main.R` is the single entry point per node-package v2 spec. It parses CLI args, dispatches to subcommand handlers, and delegates NDJSON output to `scripts/report.R`. The subcommand handlers (`fetch`, `qc`, `clean`) are stubs in this change — they echo their name and exit. SKILL.md frontmatter is the machine-readable agent contract; the body is human/LLM narrative following the skill-like pattern (11 sections).
 
-**Tech Stack:** R >= 4.3, YAML (SKILL.md frontmatter), testthat, conda/mamba
+**Tech Stack:** R >= 4.3, YAML (SKILL.md frontmatter), testthat, conda/mamba, AnnoProbe (CRAN) for probe annotation
+
+**Test Datasets:** GSE318047 (human GPL570), GSE156508 (human GPL16686 no-gene-symbol), GSE11381 (mouse GPL339), GSE4105 (rat GPL85), GSE84422 (multi-platform GPL96+97+570), GSE42861 (methylation skip)
 
 ---
 
@@ -572,6 +574,9 @@ dependencies:
   - r-stringr
   - r-tibble
 
+  # CRAN — probe annotation (handles GB_ACC-only platforms like GPL16686)
+  - r-annoprobe
+
   # YAML parsing (SKILL.md validation)
   - r-yaml
 
@@ -610,6 +615,9 @@ dependencies:
   - r-tidyr
   - r-stringr
   - r-tibble
+
+  # CRAN — probe annotation (handles GB_ACC-only platforms like GPL16686)
+  - r-annoprobe
 
   # YAML parsing (SKILL.md validation)
   - r-yaml
