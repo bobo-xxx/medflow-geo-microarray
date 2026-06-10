@@ -1,7 +1,8 @@
 # normalize.R — Expression matrix normalization for geo-microarray-processing
 #
 # Detects expression type (raw/centered/log) and applies appropriate
-# transformation to produce non-negative, log2-scale values.
+# transformation. Only raw-scale data is transformed; centered and
+# log-scale data pass through unchanged.
 
 #' Detect expression type from quantile and mean analysis
 #'
@@ -16,21 +17,18 @@ detect_expr_type <- function(x) {
   return("log")
 }
 
-#' Normalize expression matrix to non-negative log2 scale
+#' Normalize raw expression matrix to log2 scale
 #'
-#' Applies log2(x+1) to raw data and shifts negative values to zero.
-#' Centered and log-scale data are passed through with shift correction.
+#' Applies log2(x + 1e-6) to raw data. Centered and log-scale data
+#' pass through unchanged — centered data is already log2-transformed
+#' and negative values carry meaningful biological information.
 #'
 #' @param x Numeric matrix (probes x samples)
 #' @return Normalized numeric matrix of same dimensions
 normalize_expr_matrix <- function(x) {
   type <- detect_expr_type(x)
 
-  if (type == "raw") x <- log2(x + 1)
-
-  # Ensure non-negative
-  min_val <- min(x, na.rm = TRUE)
-  if (min_val < 0) x <- x - min_val
+  if (type == "raw") x <- log2(x + 1e-6)
 
   x
 }

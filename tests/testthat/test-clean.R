@@ -44,22 +44,23 @@ describe("run_clean", {
     unlink("test_log_clean.csv")
   })
 
-  it("shifts centered data to non-negative", {
+  it("preserves centered data unchanged (already log2-scale)", {
     set.seed(42)
     m <- matrix(rnorm(500 * 6, mean = 0.1, sd = 1.5), nrow = 500, ncol = 6)
     colnames(m) <- paste0("sample_", 1:6)
     write.csv(m, "test_centered.csv", row.names = TRUE)
 
-    result <- run_clean("test_centered.csv", "test_shifted.csv")
+    result <- run_clean("test_centered.csv", "test_centered_clean.csv")
     expect_equal(result$status, "success")
     expect_equal(result$input_scale, "centered")
-    expect_equal(result$applied_transform, "shift")
+    expect_equal(result$applied_transform, "none")
 
-    cleaned <- as.matrix(read.csv("test_shifted.csv", row.names = 1))
-    expect_gte(min(cleaned, na.rm = TRUE), 0)
+    cleaned <- as.matrix(read.csv("test_centered_clean.csv", row.names = 1))
+    # Values preserved (negative values are meaningful)
+    expect_equal(as.vector(cleaned), as.vector(m))
 
     unlink("test_centered.csv")
-    unlink("test_shifted.csv")
+    unlink("test_centered_clean.csv")
   })
 
   it("returns error for non-existent input", {

@@ -1,8 +1,8 @@
 # clean.R — Expression matrix normalization for geo-microarray-processing
 #
 # Applies normalization transforms to expression matrices:
-#   raw      -> log2(x + 1)
-#   centered -> shift to non-negative
+#   raw      -> log2(x + 1e-6)
+#   centered -> pass-through (already log2-scale, negative values meaningful)
 #   log      -> pass-through
 #
 # Reuses normalize_expr_matrix() from normalize.R.
@@ -39,9 +39,7 @@ run_clean <- function(input, output = NULL) {
 
   # Determine what was applied
   applied_transform <- if (input_scale == "raw") {
-    "log2(x+1)"
-  } else if (input_scale == "centered" && min(expr, na.rm = TRUE) < 0) {
-    "shift"
+    "log2(x+1e-6)"
   } else {
     "none"
   }
