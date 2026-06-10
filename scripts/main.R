@@ -11,7 +11,9 @@
 # All parameters declared in SKILL.md frontmatter are accepted.
 # Output is NDJSON to stdout.
 
-source("scripts/report.R")
+# Resolve script directory for relative sourcing (works from any CWD)
+script_dir <- dirname(normalizePath(sub("^--file=", "", grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE))))
+source(file.path(script_dir, "report.R"))
 
 # -------------------------------------------------------------------
 # Argument parsing

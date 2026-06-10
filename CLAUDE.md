@@ -112,11 +112,33 @@ conda config --show channels
 
 Channel priority: mirrors first (fast), then upstream conda-forge/bioconda (authoritative). The `env.yaml` file always uses upstream channels only — mirrors are a local dev convenience.
 
+### Proxy for R Package Installation
+
+Use proxy `http://localhost:2999` to speed up CRAN package installation:
+
+```bash
+# Set proxy before installing R packages
+export http_proxy=http://localhost:2999
+export https_proxy=http://localhost:2999
+
+# Or set within R
+Rscript -e 'Sys.setenv(http_proxy="http://localhost:2999", https_proxy="http://localhost:2999")'
+```
+
+### AnnoProbe (CRAN Only)
+
+`r-annoprobe` is NOT available on conda channels. Install from CRAN after creating the conda environment:
+
+```bash
+conda activate geo-microarray-processing
+Rscript -e 'install.packages("AnnoProbe", repos = "https://cloud.r-project.org")'
+```
+
 ### Rules
 
 1. **Use the node's own env**: create from `env.yaml`, activate it for all development work.
 2. **Python packages**: use `uv pip install` inside the node's conda env.
-3. **R packages**: prefer `conda install -c conda-forge r-<package>`.
+3. **R packages**: prefer `conda install -c conda-forge r-<package>`. Fall back to `install.packages()` for CRAN-only packages (e.g., AnnoProbe).
 4. **All languages**: install via conda-forge first.
 5. **No hardcoded secrets**: node packages are open-source. No API keys, tokens, or credentials.
 

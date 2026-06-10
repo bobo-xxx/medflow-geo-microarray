@@ -1,16 +1,19 @@
 library(testthat)
 
-# helpers
-source("tests/testthat/helpers.R")
+# helpers in same directory as this test file
+source("helpers.R")
+
+# Path to SKILL.md relative to tests/testthat/
+skillmd_path <- "../../SKILL.md"
 
 describe("SKILL.md", {
 
   it("exists at the package root", {
-    expect_true(file.exists("SKILL.md"))
+    expect_true(file.exists(skillmd_path))
   })
 
   it("has valid YAML frontmatter", {
-    content <- readLines("SKILL.md", warn = FALSE)
+    content <- readLines(skillmd_path, warn = FALSE)
 
     # Find YAML frontmatter delimiters
     dashes <- which(content == "---")
@@ -30,7 +33,7 @@ describe("SKILL.md", {
   })
 
   it("declares required frontmatter fields", {
-    content <- readLines("SKILL.md", warn = FALSE)
+    content <- readLines(skillmd_path, warn = FALSE)
     dashes <- which(content == "---")
     yaml_lines <- content[(dashes[1] + 1):(dashes[2] - 1)]
     tmp <- tempfile(fileext = ".yaml")
@@ -46,17 +49,17 @@ describe("SKILL.md", {
   })
 
   it("has type 'standard'", {
-    fm <- parse_skillmd_frontmatter("SKILL.md")
+    fm <- parse_skillmd_frontmatter(skillmd_path)
     expect_equal(fm$type, "standard")
   })
 
   it("has entry pointing to scripts/main.R", {
-    fm <- parse_skillmd_frontmatter("SKILL.md")
+    fm <- parse_skillmd_frontmatter(skillmd_path)
     expect_equal(fm$entry, "scripts/main.R")
   })
 
   it("has parameters for subcommand, gse-id, outdir, proxy, api-key", {
-    fm <- parse_skillmd_frontmatter("SKILL.md")
+    fm <- parse_skillmd_frontmatter(skillmd_path)
     param_names <- vapply(fm$parameters, `[[`, "", "name")
     expected <- c("subcommand", "--gse-id", "--outdir", "--input",
                   "--proxy", "--api-key")
@@ -67,7 +70,7 @@ describe("SKILL.md", {
   })
 
   it("has 6 exception patterns", {
-    fm <- parse_skillmd_frontmatter("SKILL.md")
+    fm <- parse_skillmd_frontmatter(skillmd_path)
     expect_gte(length(fm$exceptions), 6)
   })
 })
