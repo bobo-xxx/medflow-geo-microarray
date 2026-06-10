@@ -21,6 +21,7 @@ source(file.path(script_dir, "validate.R"))
 source(file.path(script_dir, "species.R"))
 source(file.path(script_dir, "annotate.R"))
 source(file.path(script_dir, "fetch.R"))
+source(file.path(script_dir, "qc.R"))
 
 # -------------------------------------------------------------------
 # Argument parsing
@@ -152,11 +153,25 @@ do_fetch <- function(opts) {
   report_result(result$status, files = files, metadata = result$metadata)
 }
 
-#' QC subcommand — stub
+#' QC subcommand
 do_qc <- function(opts) {
   report_info(sprintf("Running QC on %s...", opts$input))
-  report_info("Subcommand 'qc' not yet implemented")
-  report_result("pass", files = list(), metadata = list())
+  result <- run_qc(opts$input)
+
+  if (result$status == "error") {
+    report_error(result$msg)
+    return(invisible(NULL))
+  }
+
+  for (flag in result$flags) {
+    note <- if (!is.null(flag$note)) paste0(" (", flag$note, ")") else ""
+    msg  <- sprintf("QC flag [%s]: %s = %s (threshold: %s)%s",
+                    toupper(flag$level), flag$metric, flag$value, flag$threshold, note)
+    report_info(msg)
+  }
+
+  report_result(result$status, decision = result$decision,
+                metrics = result$metrics, flags = result$flags)
 }
 
 #' Clean subcommand — stub

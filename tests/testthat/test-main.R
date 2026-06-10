@@ -35,10 +35,15 @@ describe("main.R CLI dispatch", {
     expect_equal(exit_code, 0)
   })
 
-  it("accepts qc subcommand with --input", {
+  it("accepts qc subcommand with valid --input", {
+    # Create a real CSV for QC to read
+    m <- matrix(runif(500 * 8, 2, 14), nrow = 500, ncol = 8)
+    colnames(m) <- paste0("s", 1:8)
+    write.csv(m, "test_qc_main.csv", row.names = TRUE)
     exit_code <- system2("Rscript",
-      c(main_script, "qc", "--input", "test.csv"),
+      c(main_script, "qc", "--input", "test_qc_main.csv"),
       stdout = FALSE, stderr = FALSE)
+    unlink("test_qc_main.csv")
     expect_equal(exit_code, 0)
   })
 
