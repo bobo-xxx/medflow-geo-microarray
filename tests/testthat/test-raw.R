@@ -124,6 +124,54 @@ describe("Processor error handling", {
     expect_true(is.function(process_agilent_2c))
     expect_true(is.function(process_agilent_1c))
   })
+})
+
+describe("process_illumina_txt — GenomeStudio non-normalized TXT", {
+
+  it("parses interleaved value/Detection columns and applies neqc", {
+    # Simulate GenomeStudio compact format: ID + alternating value/pval
+    tmp <- tempfile(fileext = ".txt")
+    lines <- c(
+      "ID_REF\tSample1\tDetection Pval\tSample2\tDetection Pval",
+      "ILMN_1\t100.5\t0.001\t200.3\t0.002",
+      "ILMN_2\t50.2\t0.010\t80.1\t0.005",
+      "ILMN_3\t300.1\t0.000\t400.5\t0.001"
+    )
+    writeLines(lines, tmp)
+
+    mock_matrix <- matrix(runif(3 * 2, 4, 12), nrow = 3, ncol = 2)
+
+    local_mocked_bindings(
+      neqc = function(x) list(E = mock_matrix),
+      .package = "limma"
+    )
+
+    result <- process_illumina_txt(c(tmp), tempdir(), "GSE12345")
+    expect_equal(result$status, "success")
+    expect_equal(result$platform, "Illumina_TXT")
+    expect_match(result$pipeline, "neqc")
+    expect_equal(dim(result$expr_matrix), c(3, 2))
+    unlink(tmp)
+  })
+
+  it("returns error for empty TXT file list", {
+    result <- process_illumina_txt(c("notes.csv"), tempdir(), "GSE12345")
+    expect_equal(result$status, "error")
+    expect_match(result$msg, "No TXT")
+  })
+
+  it("returns error when requireNamespace fails for limma", {
+    local_mocked_bindings(
+      requireNamespace = function(pkg, ...) pkg != "limma",
+      .package = "base"
+    )
+    tmp <- tempfile(fileext = ".txt")
+    file.create(tmp)
+    result <- process_illumina_txt(c(tmp), tempdir(), "GSE12345")
+    expect_equal(result$status, "error")
+    expect_match(result$msg, "limma")
+    unlink(tmp)
+  })
 
   it("processors return list with required fields on error path", {
     r <- process_illumina(c("notes.txt"), tempdir(), "GSE12345")
