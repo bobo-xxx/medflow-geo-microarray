@@ -99,3 +99,38 @@ describe("process_raw_files", {
     expect_equal(result$status, "skipped_methylation")
   })
 })
+
+describe("Processor error handling", {
+
+  it("process_illumina returns error when no IDAT in file list", {
+    result <- process_illumina(c("notes.txt"), tempdir(), "GSE12345")
+    expect_equal(result$status, "error")
+    expect_match(result$msg, "No IDAT")
+  })
+
+  it("process_agilent_2c returns error when no GPR in file list", {
+    result <- process_agilent_2c(c("notes.txt"), tempdir(), "GSE12345")
+    expect_equal(result$status, "error")
+    expect_match(result$msg, "No GPR")
+  })
+
+  it("process_nimblegen returns error when no PAIR in file list", {
+    result <- process_nimblegen(c("notes.txt"), tempdir(), "GSE12345")
+    expect_equal(result$status, "error")
+    expect_match(result$msg, "No PAIR")
+  })
+
+  it("all processors are defined as functions", {
+    expect_true(is.function(process_affy))
+    expect_true(is.function(process_illumina))
+    expect_true(is.function(process_agilent_2c))
+    expect_true(is.function(process_agilent_1c))
+    expect_true(is.function(process_nimblegen))
+  })
+
+  it("processors return list with required fields on error path", {
+    r <- process_illumina(c("notes.txt"), tempdir(), "GSE12345")
+    expect_equal(r$status, "error")
+    expect_true("msg" %in% names(r))
+  })
+})
