@@ -202,8 +202,8 @@ describe("process_illumina — IDAT via neqc", {
   it("applies read.idat → neqc pipeline", {
     mock_matrix <- matrix(runif(100 * 4, 2, 14), nrow = 100, ncol = 4)
     local_mocked_bindings(
-      read.idat = function(files, ...) mock_matrix,
-      neqc = function(x) log2(mock_matrix + 1e-6),
+      read.idat = function(files, bgxfile, ...) mock_matrix,
+      neqc = function(x) list(E = log2(mock_matrix + 1e-6)),
       .package = "limma"
     )
 

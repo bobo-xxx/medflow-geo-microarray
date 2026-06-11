@@ -140,10 +140,15 @@ process_illumina <- function(files, out_dir, gse_id) {
     return(list(status = "error", msg = "No IDAT files found"))
   }
 
+  # Find BGX manifest file (required for Illumina expression IDAT)
+  bgxfile <- grep("[.]bgx$|[.]txt$", files, value = TRUE, ignore.case = TRUE)
+  if (length(bgxfile) == 0) bgxfile <- NULL else bgxfile <- bgxfile[1]
+
   message("Reading ", length(idat_files), " IDAT files...")
   # neqc handles: normexp bg → offset +16 → QN → log2
-  raw <- limma::read.idat(idat_files)
+  raw <- limma::read.idat(idat_files, bgxfile = bgxfile)
   expr <- limma::neqc(raw)
+  expr <- expr$E  # extract matrix from EList
 
   list(
     status      = "success",
