@@ -45,6 +45,14 @@ describe("detect_raw_type", {
     unlink(tmp)
   })
 
+  it("detects Illumina GenomeStudio TXT from TargetID/AVG_Signal headers", {
+    tmp <- tempfile(fileext = ".txt")
+    writeLines(c("ID_REF\tAVG_Signal\tDetection Pval\tsample2"), tmp)
+    files <- c(tmp)
+    expect_equal(detect_raw_type(files), "illumina_txt")
+    unlink(tmp)
+  })
+
   it("BPM check wins over IDAT (methylation before illumina)", {
     files <- c("sample1.idat", "manifest.BPM")
     expect_equal(detect_raw_type(files), "methylation")
@@ -112,6 +120,7 @@ describe("Processor error handling", {
   it("all processors are defined as functions", {
     expect_true(is.function(process_affy))
     expect_true(is.function(process_illumina))
+    expect_true(is.function(process_illumina_txt))
     expect_true(is.function(process_agilent_2c))
     expect_true(is.function(process_agilent_1c))
   })

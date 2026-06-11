@@ -10,8 +10,8 @@
 #' Detect raw file type from filename patterns
 #'
 #' @param files Character vector of filenames
-#' @return Character: "affymetrix", "illumina", "agilent_2c", "agilent_1c",
-#'         "illumina", "agilent_2c", "agilent_1c", "methylation", or "unknown"
+#' @return Character: "affymetrix", "illumina", "illumina_txt",
+#'         "agilent_2c", "agilent_1c", "methylation", or "unknown"
 detect_raw_type <- function(files) {
   # Priority order: check specific patterns first, then generic
   # Methylation before Illumina (both have IDAT)
@@ -26,9 +26,15 @@ detect_raw_type <- function(files) {
     header <- if (file.exists(txt_files[1])) {
       tryCatch(readLines(txt_files[1], n = 5), error = function(e) "")
     } else ""
+    # Agilent FE single-color
     if (any(grepl("ProbeName|GeneName|gTotalGeneSignal|gProcessedSignal",
                   header, ignore.case = TRUE))) {
       return("agilent_1c")
+    }
+    # Illumina GenomeStudio non-normalized TXT export
+    if (any(grepl("TargetID|AVG_Signal|Detection.Pval",
+                  header, ignore.case = TRUE))) {
+      return("illumina_txt")
     }
   }
 
@@ -70,10 +76,11 @@ process_raw_files <- function(files, out_dir, gse_id) {
   message("Detected raw type: ", raw_type)
 
   switch(raw_type,
-    "affymetrix" = process_affy(files, out_dir, gse_id),
-    "illumina"   = process_illumina(files, out_dir, gse_id),
-    "agilent_2c" = process_agilent_2c(files, out_dir, gse_id),
-    "agilent_1c" = process_agilent_1c(files, out_dir, gse_id),
+    "affymetrix"    = process_affy(files, out_dir, gse_id),
+    "illumina"      = process_illumina(files, out_dir, gse_id),
+    "illumina_txt"  = process_illumina_txt(files, out_dir, gse_id),
+    "agilent_2c"    = process_agilent_2c(files, out_dir, gse_id),
+    "agilent_1c"    = process_agilent_1c(files, out_dir, gse_id),
     "methylation" = list(
       status = "skipped_methylation",
       msg = "Methylation array detected (BPM+IDAT), not expression data"
@@ -164,6 +171,57 @@ process_illumina <- function(files, out_dir, gse_id) {
     status      = "success",
     expr_matrix = expr,
     platform    = "Illumina",
+    pipeline    = "limma::neqc()"
+  )
+}
+
+#' Process Illumina non-normalized TXT (GenomeStudio export)
+#'
+#' Handles the common Illumina submission format: tab-delimited TXT
+#' with TargetID, AVG_Signal, and Detection Pval columns.
+#' Uses limma::read.ilmn() → neqc() (normexp bg → offset +16 → QN → log2).
+#'
+#' @param files Paths to TXT files (incl. non-normalized GenomeStudio exports)
+#' @param out_dir Output directory
+#' @param gse_id GEO series ID
+#' @return List with expr_matrix and status
+process_illumina_txt <- function(files, out_dir, gse_id) {
+  if (!requireNamespace("limma", quietly = TRUE)) {
+    return(list(status = "error", msg = "Package 'limma' required for Illumina TXT processing"))
+  }
+
+  txt_files <- grep("[.]txt(\\.gz)?$", files, value = TRUE, ignore.case = TRUE)
+  if (length(txt_files) == 0) {
+    return(list(status = "error", msg = "No TXT files found"))
+  }
+
+  message("Reading ", length(txt_files), " Illumina non-normalized TXT file(s)...")
+
+  # GenomeStudio compact format: ID_REF + alternating value/Detection columns per sample
+  raw <- read.table(txt_files[1], header = TRUE, sep = "\t",
+                    check.names = FALSE, row.names = 1, comment.char = "")
+
+  # Odd columns = expression values, even columns = detection p-values
+  expr_cols <- seq(1, ncol(raw), 2)
+  det_cols  <- seq(2, ncol(raw), 2)
+
+  expr_matrix <- as.matrix(raw[, expr_cols, drop = FALSE])
+  detection   <- as.matrix(raw[, det_cols,  drop = FALSE])
+
+  # Clean column names (strip GSM IDs to just the number part)
+  colnames(expr_matrix) <- colnames(detection) <- paste0("S", seq_len(ncol(expr_matrix)))
+
+  # Build EListRaw for neqc
+  elist <- new("EListRaw", list(E = expr_matrix,
+               other = list(Detection = detection)))
+
+  expr <- limma::neqc(elist)
+  expr <- expr$E
+
+  list(
+    status      = "success",
+    expr_matrix = expr,
+    platform    = "Illumina_TXT",
     pipeline    = "limma::neqc()"
   )
 }
