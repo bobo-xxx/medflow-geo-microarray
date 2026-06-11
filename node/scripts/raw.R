@@ -230,7 +230,7 @@ process_nimblegen <- function(files, out_dir, gse_id) {
   }
 
   message("Reading ", length(pair_files), " PAIR files...")
-  raw <- oligo::read.xys(pair_files)
+  raw <- oligo::read.xysfiles(pair_files)
   eset <- oligo::rma(raw)
   expr <- Biobase::exprs(eset)
 
@@ -238,6 +238,6 @@ process_nimblegen <- function(files, out_dir, gse_id) {
     status      = "success",
     expr_matrix = expr,
     platform    = "NimbleGen",
-    pipeline    = "oligo::read.xys()+rma()"
+    pipeline    = "oligo::read.xysfiles()+rma()"
   )
 }

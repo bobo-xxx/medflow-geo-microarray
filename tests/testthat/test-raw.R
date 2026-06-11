@@ -134,3 +134,159 @@ describe("Processor error handling", {
     expect_true("msg" %in% names(r))
   })
 })
+
+describe("process_affy — CEL via RMA", {
+
+  it("applies read.celfiles → rma → exprs pipeline", {
+    mock_matrix <- matrix(runif(100 * 4, 2, 14), nrow = 100, ncol = 4)
+
+    local_mocked_bindings(
+      read.celfiles = function(files) list(),
+      rma = function(raw, ...) list(),
+      .package = "oligo"
+    )
+    local_mocked_bindings(
+      exprs = function(object) mock_matrix,
+      .package = "Biobase"
+    )
+
+    result <- process_affy(c("test1.CEL", "test2.CEL"), tempdir(), "GSE12345")
+    expect_equal(result$status, "success")
+    expect_true(is.matrix(result$expr_matrix))
+    expect_equal(result$platform, "Affymetrix")
+    expect_match(result$pipeline, "rma")
+    expect_equal(dim(result$expr_matrix), c(100, 4))
+  })
+
+  it("returns error when requireNamespace fails for oligo", {
+    local_mocked_bindings(
+      requireNamespace = function(pkg, ...) FALSE,
+      .package = "base"
+    )
+    result <- process_affy(c("test.CEL"), tempdir(), "GSE12345")
+    expect_equal(result$status, "error")
+    expect_match(result$msg, "oligo")
+  })
+})
+
+describe("process_illumina — IDAT via neqc", {
+
+  it("applies read.idat → neqc pipeline", {
+    mock_matrix <- matrix(runif(100 * 4, 2, 14), nrow = 100, ncol = 4)
+    local_mocked_bindings(
+      read.idat = function(files, ...) mock_matrix,
+      neqc = function(x) log2(mock_matrix + 1e-6),
+      .package = "limma"
+    )
+
+    result <- process_illumina(c("test1.idat", "test2.idat"), tempdir(), "GSE12345")
+    expect_equal(result$status, "success")
+    expect_equal(result$platform, "Illumina")
+    expect_match(result$pipeline, "neqc")
+    expect_equal(dim(result$expr_matrix), c(100, 4))
+  })
+
+  it("returns error when requireNamespace fails for limma", {
+    local_mocked_bindings(
+      requireNamespace = function(pkg, ...) pkg != "limma",
+      .package = "base"
+    )
+    result <- process_illumina(c("test.idat"), tempdir(), "GSE12345")
+    expect_equal(result$status, "error")
+    expect_match(result$msg, "limma")
+  })
+})
+
+describe("process_agilent_2c — GPR via normexp+loess+quantile", {
+
+  it("applies full two-color pipeline", {
+    mock_matrix <- matrix(runif(100 * 4, 2, 14), nrow = 100, ncol = 4)
+    mock_rg <- list(A = mock_matrix)
+
+    local_mocked_bindings(
+      read.maimages = function(files, source, ...) mock_rg,
+      backgroundCorrect = function(rg, method) rg,
+      normalizeWithinArrays = function(rg, method) rg,
+      normalizeBetweenArrays = function(rg, method) mock_matrix,
+      .package = "limma"
+    )
+
+    result <- process_agilent_2c(c("test1.GPR", "test2.GPR"), tempdir(), "GSE12345")
+    expect_equal(result$status, "success")
+    expect_equal(result$platform, "Agilent_2C")
+    expect_match(result$pipeline, "normexp")
+    expect_match(result$pipeline, "loess")
+    expect_match(result$pipeline, "quantile")
+  })
+
+  it("returns error when requireNamespace fails for limma", {
+    local_mocked_bindings(
+      requireNamespace = function(pkg, ...) pkg != "limma",
+      .package = "base"
+    )
+    result <- process_agilent_2c(c("test.GPR"), tempdir(), "GSE12345")
+    expect_equal(result$status, "error")
+  })
+})
+
+describe("process_agilent_1c — Agilent FE single-color", {
+
+  it("applies source=agilent green.only pipeline", {
+    mock_matrix <- matrix(runif(100 * 4, 2, 14), nrow = 100, ncol = 4)
+    mock_rg <- list(E = mock_matrix)
+
+    local_mocked_bindings(
+      read.maimages = function(files, source, green.only, ...) mock_rg,
+      normalizeBetweenArrays = function(rg, method) mock_matrix,
+      .package = "limma"
+    )
+
+    result <- process_agilent_1c(c("test1.txt", "test2.txt"), tempdir(), "GSE12345")
+    expect_equal(result$status, "success")
+    expect_equal(result$platform, "Agilent_1C")
+    expect_match(result$pipeline, "agilent")
+    expect_match(result$pipeline, "quantile")
+  })
+
+  it("returns error when requireNamespace fails for limma", {
+    local_mocked_bindings(
+      requireNamespace = function(pkg, ...) pkg != "limma",
+      .package = "base"
+    )
+    result <- process_agilent_1c(c("test.txt"), tempdir(), "GSE12345")
+    expect_equal(result$status, "error")
+  })
+})
+
+describe("process_nimblegen — PAIR via RMA", {
+
+  it("applies read.xys → rma pipeline", {
+    mock_exprs <- matrix(runif(100 * 4, 2, 14), nrow = 100, ncol = 4)
+    local_mocked_bindings(
+      read.xysfiles = function(files) list(),
+      rma = function(raw) NULL,
+      .package = "oligo"
+    )
+    # Mock exprs separately since rma returns an eset-like object
+    local_mocked_bindings(
+      exprs = function(eset) mock_exprs,
+      .package = "Biobase"
+    )
+
+    result <- process_nimblegen(c("test1.PAIR", "test2.PAIR"), tempdir(), "GSE12345")
+    expect_equal(result$status, "success")
+    expect_equal(result$platform, "NimbleGen")
+    expect_match(result$pipeline, "rma")
+    expect_equal(dim(result$expr_matrix), c(100, 4))
+  })
+
+  it("returns error when requireNamespace fails for oligo", {
+    local_mocked_bindings(
+      requireNamespace = function(pkg, ...) pkg != "oligo",
+      .package = "base"
+    )
+    result <- process_nimblegen(c("test.PAIR"), tempdir(), "GSE12345")
+    expect_equal(result$status, "error")
+    expect_match(result$msg, "oligo")
+  })
+})
