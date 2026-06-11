@@ -2,7 +2,7 @@
 name: geo-microarray-processing
 description: >
   Fetch and process GEO microarray expression data with 5-tier fallback
-  (local cache → series matrix → supplementary → raw CEL → metadata-only).
+  (local cache -> series matrix -> supplementary -> raw CEL -> metadata-only).
   Supports Affymetrix, Agilent, and Illumina platforms with automatic
   platform detection. Produces probe-level and gene-level expression
   matrices with normalization, probe-to-gene aggregation, and quality

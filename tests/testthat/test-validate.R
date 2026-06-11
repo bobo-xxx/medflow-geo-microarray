@@ -25,7 +25,7 @@ describe("validate_expr_matrix", {
   })
 
   it("rejects empty matrix (0 columns)", {
-    m <- matrix(runif(10), nrow = 10, ncol = 0)
+    m <- matrix(numeric(0), nrow = 10, ncol = 0)
     result <- validate_expr_matrix(m)
     expect_false(result$valid)
   })

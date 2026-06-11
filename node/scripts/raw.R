@@ -23,10 +23,9 @@ detect_raw_type <- function(files) {
   # Agilent FE: check TXT file headers for known column names
   txt_files <- grep("[.]txt$", files, value = TRUE, ignore.case = TRUE)
   if (length(txt_files) > 0) {
-    header <- tryCatch(
-      readLines(txt_files[1], n = 5),
-      error = function(e) ""
-    )
+    header <- if (file.exists(txt_files[1])) {
+      tryCatch(readLines(txt_files[1], n = 5), error = function(e) "")
+    } else ""
     if (any(grepl("ProbeName|GeneName|gTotalGeneSignal|gProcessedSignal",
                   header, ignore.case = TRUE))) {
       return("agilent_1c")
