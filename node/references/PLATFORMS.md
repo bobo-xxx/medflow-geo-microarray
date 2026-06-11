@@ -136,6 +136,37 @@ RAW.tar extracted
 
 When extracting gene identifiers from processed data:
 
+## GEO FTP URL Patterns
+
+Raw supplementary files (RAW.tar, CEL, IDAT, GPR) are served via HTTPS at:
+
+```
+https://ftp.ncbi.nlm.nih.gov/geo/series/<dir>/<accession>/suppl/<file>
+```
+
+The `<dir>` component uses the first (N-3) digits of the accession followed by `nnn`:
+
+| Accession | Digits (N) | Dir pattern | Full path |
+|---|---|---|---|
+| GSE318047 | 6 | `GSE318nnn` | `geo/series/GSE318nnn/GSE318047/suppl/GSE318047_RAW.tar` |
+| GSE69223 | 5 | `GSE69nnn` | `geo/series/GSE69nnn/GSE69223/suppl/GSE69223_RAW.tar` |
+| GSE100155 | 6 | `GSE100nnn` | `geo/series/GSE100nnn/GSE100155/suppl/` |
+| GSE4105 | 4 | `GSE4nnn` | `geo/series/GSE4nnn/GSE4105/suppl/` |
+
+Rule: `GSE` + `first (len-3) digits` + `nnn`.
+
+**Download fallback**: if `GEOquery::getGEOSuppFiles()` fails, try direct curl:
+
+```bash
+# GSE with N digits: dir = GSE + first_(N-3)_digits + nnn
+GSE=69223; DIR="GSE$(echo $GSE | cut -c4-$((${#GSE}-3)))nnn"
+curl -L "https://ftp.ncbi.nlm.nih.gov/geo/series/${DIR}/GSE${GSE}/suppl/GSE${GSE}_RAW.tar" -o GSE${GSE}_RAW.tar
+```
+
+A `GET` to the suppl/ directory lists all available supplementary files.
+
+## Gene Symbol Column Priorities
+
 1. `Gene Symbol` / `GENE_SYMBOL` / `Symbol` — direct column
 2. `gene_assignment` — parse `"ACC // SYMBOL // desc // ..."` → field 2
 3. GPL annotation table — `GEOquery::Table(getGEO(GPL))`
