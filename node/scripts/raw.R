@@ -5,13 +5,13 @@
 # matrices. All processors converge to the same output format.
 #
 # Supported: Affymetrix CEL, Illumina IDAT, Agilent GPR, Agilent FE TXT,
-# NimbleGen PAIR. Methylation (IDAT+BPM) is skipped.
+# Methylation (IDAT+BPM) is skipped.
 
 #' Detect raw file type from filename patterns
 #'
 #' @param files Character vector of filenames
 #' @return Character: "affymetrix", "illumina", "agilent_2c", "agilent_1c",
-#'         "nimblegen", "methylation", or "unknown"
+#'         "illumina", "agilent_2c", "agilent_1c", "methylation", or "unknown"
 detect_raw_type <- function(files) {
   # Priority order: check specific patterns first, then generic
   # Methylation before Illumina (both have IDAT)
@@ -19,7 +19,6 @@ detect_raw_type <- function(files) {
   if (any(grepl("[.]CEL([.]gz)?$", files, ignore.case = TRUE))) return("affymetrix")
   if (any(grepl("[.]idat([.]gz)?$", files, ignore.case = TRUE))) return("illumina")
   if (any(grepl("[.]GPR([.]gz)?$", files, ignore.case = TRUE))) return("agilent_2c")
-  if (any(grepl("[.]PAIR([.]gz)?$", files, ignore.case = TRUE))) return("nimblegen")
 
   # Agilent FE: check TXT file headers for known column names
   txt_files <- grep("[.]txt$", files, value = TRUE, ignore.case = TRUE)
@@ -76,7 +75,6 @@ process_raw_files <- function(files, out_dir, gse_id) {
     "illumina"   = process_illumina(files, out_dir, gse_id),
     "agilent_2c" = process_agilent_2c(files, out_dir, gse_id),
     "agilent_1c" = process_agilent_1c(files, out_dir, gse_id),
-    "nimblegen"  = process_nimblegen(files, out_dir, gse_id),
     "methylation" = list(
       status = "skipped_methylation",
       msg = "Methylation array detected (BPM+IDAT), not expression data"
@@ -225,38 +223,3 @@ process_agilent_1c <- function(files, out_dir, gse_id) {
   )
 }
 
-#' Process NimbleGen PAIR files
-#'
-#' @param files Paths to PAIR files
-#' @param out_dir Output directory
-#' @param gse_id GEO series ID
-#' @return List with expr_matrix and status
-process_nimblegen <- function(files, out_dir, gse_id) {
-  if (!requireNamespace("oligo", quietly = TRUE)) {
-    return(list(status = "error",
-      msg = "Package 'oligo' required for NimbleGen PAIR reading. Install: BiocManager::install('oligo')"))
-  }
-  if (!requireNamespace("limma", quietly = TRUE)) {
-    return(list(status = "error", msg = "Package 'limma' required for normalization"))
-  }
-
-  pair_files <- grep("[.]PAIR([.]gz)?$", files, value = TRUE, ignore.case = TRUE)
-  if (length(pair_files) == 0) {
-    return(list(status = "error", msg = "No PAIR files found"))
-  }
-
-  message("Reading ", length(pair_files), " PAIR files...")
-  raw  <- oligo::read.xysfiles(pair_files)
-  expr <- Biobase::exprs(raw)  # raw intensities
-
-  # Process via limma (no preprocessCore dependency)
-  expr <- limma::normalizeBetweenArrays(expr, method = "quantile")
-  expr <- log2(expr + 1e-6)
-
-  list(
-    status      = "success",
-    expr_matrix = expr,
-    platform    = "NimbleGen",
-    pipeline    = "oligo::read.xysfiles()+limma::normexp+quantile+log2"
-  )
-}

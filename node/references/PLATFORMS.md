@@ -12,7 +12,6 @@ and the standard preprocessing pipeline for each raw data type.
 | `*.idat(.gz)?` only | Illumina BeadChip | `limma::neqc()` (normexp bg → offset 16 → QN) | Log2 |
 | `*.GPR(.gz)?` | Agilent 2-color | `limma::read.maimages()` → `backgroundCorrect(normexp)` → `normalizeWithinArrays(loess)` → `normalizeBetweenArrays(quantile)` | Log2 |
 | `*.txt` (Agilent FE) | Agilent single-color | `limma::read.maimages(source="agilent", green.only=TRUE)` → `normalizeBetweenArrays(quantile)` | Log2 |
-| `*.PAIR(.gz)?` | NimbleGen | `oligo::read.xys()` → `rma()` | Log2 |
 | `series_matrix.txt.gz` | TXT/CSV | Pipeline detection from `data_processing` metadata | Varies |
 
 ## Raw Data Processing Pipelines
@@ -86,18 +85,6 @@ Probe-level log2 expression matrix
 Detection: TXT files in RAW.tar with header containing `ProbeName`, `GeneName`,
 `gTotalGeneSignal`, or `gProcessedSignal`.
 
-### NimbleGen PAIR
-
-```
-read.xys(files)              # oligo
-    │
-    ▼
-rma()                        # oligo
-    │
-    ▼
-Probe-level log2 expression matrix
-```
-
 ## GPR Header Detection
 
 GPR files require header analysis to distinguish variants:
@@ -128,7 +115,6 @@ RAW.tar extracted
   ├─ *.idat only           → Illumina    → limma::neqc()
   ├─ *.GPR(.gz)?           → Agilent 2C  → limma::read.maimages() + loess + QN
   ├─ *.txt (Agilent FE)    → Agilent 1C  → limma::read.maimages(source="agilent")
-  ├─ *.PAIR(.gz)?          → NimbleGen   → oligo::read.xys() → rma()
   └─ none                  → Tier 5 (metadata only)
 ```
 

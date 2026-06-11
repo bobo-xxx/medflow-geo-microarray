@@ -24,11 +24,6 @@ describe("detect_raw_type", {
     expect_equal(detect_raw_type(files), "agilent_2c")
   })
 
-  it("detects NimbleGen from PAIR files", {
-    files <- c("sample1.PAIR", "sample2.PAIR.gz")
-    expect_equal(detect_raw_type(files), "nimblegen")
-  })
-
   it("detects Agilent FE from TXT with ProbeName/GeneName headers", {
     tmp <- tempfile(fileext = ".txt")
     writeLines(c("ProbeName\tGeneName\tgTotalGeneSignal\tsample1"), tmp)
@@ -114,18 +109,11 @@ describe("Processor error handling", {
     expect_match(result$msg, "No GPR")
   })
 
-  it("process_nimblegen returns error when no PAIR in file list", {
-    result <- process_nimblegen(c("notes.txt"), tempdir(), "GSE12345")
-    expect_equal(result$status, "error")
-    expect_match(result$msg, "No PAIR")
-  })
-
   it("all processors are defined as functions", {
     expect_true(is.function(process_affy))
     expect_true(is.function(process_illumina))
     expect_true(is.function(process_agilent_2c))
     expect_true(is.function(process_agilent_1c))
-    expect_true(is.function(process_nimblegen))
   })
 
   it("processors return list with required fields on error path", {
@@ -286,41 +274,3 @@ describe("process_agilent_1c — Agilent FE single-color", {
   })
 })
 
-describe("process_nimblegen — PAIR via RMA", {
-
-  it("applies read.xysfiles + limma processing pipeline", {
-    mock_exprs <- matrix(runif(100 * 4, 2, 14), nrow = 100, ncol = 4)
-    local_mocked_bindings(
-      requireNamespace = function(pkg, ...) pkg %in% c("oligo", "limma"),
-      .package = "base"
-    )
-    local_mocked_bindings(
-      read.xysfiles = function(files) list(),
-      .package = "oligo"
-    )
-    local_mocked_bindings(
-      exprs = function(eset) mock_exprs,
-      .package = "Biobase"
-    )
-    local_mocked_bindings(
-      normalizeBetweenArrays = function(x, method) x,
-      .package = "limma"
-    )
-
-    result <- process_nimblegen(c("test1.PAIR", "test2.PAIR"), tempdir(), "GSE12345")
-    expect_equal(result$status, "success")
-    expect_equal(result$platform, "NimbleGen")
-    expect_match(result$pipeline, "limma")
-    expect_equal(dim(result$expr_matrix), c(100, 4))
-  })
-
-  it("returns error when requireNamespace fails for oligo", {
-    local_mocked_bindings(
-      requireNamespace = function(pkg, ...) pkg == "limma",
-      .package = "base"
-    )
-    result <- process_nimblegen(c("test.PAIR"), tempdir(), "GSE12345")
-    expect_equal(result$status, "error")
-    expect_match(result$msg, "oligo")
-  })
-})
