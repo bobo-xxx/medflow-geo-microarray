@@ -21,3 +21,6 @@ env/
 GSE*/
 tests/testthat/GSE*/
 tests/testthat/_snaps/
+.Rproj.user/
+.Rhistory
+*.sqlite
