@@ -1,5 +1,8 @@
-## MODIFIED Requirements
+# normalization Specification
 
+## Purpose
+TBD - created by archiving change metadata-driven-preprocessing. Update Purpose after archive.
+## Requirements
 ### Requirement: Normalize expression matrix
 
 The system SHALL normalize expression matrices using pipeline-driven transforms instead of heuristic type detection. `detect_expr_type()` is retained for QC reporting and consistency verification only — it no longer drives the transform decision.
@@ -21,3 +24,4 @@ The system SHALL normalize expression matrices using pipeline-driven transforms 
 - **WHEN** log2 transform is applied
 - **THEN** the pseudo-count SHALL be `1e-6` (not 1)
 - **AND** the formula SHALL be `log2(x + 1e-6)`
+

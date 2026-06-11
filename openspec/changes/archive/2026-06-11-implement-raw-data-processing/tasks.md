@@ -29,4 +29,4 @@
 - [x] Tier 2 end-to-end verified on GSE318047
 - [x] Mock-based unit tests for all 5 processors (local_mocked_bindings)
 - [x] Error path tests for requireNamespace failures + empty file lists
-- [ ] Real data verification: test processors against actual raw files (CEL/IDAT/GPR)
+- [x] Real data verification: 12 datasets across 4 platforms — CEL (3), IDAT (3), GPR (3), Agilent FE (3)
