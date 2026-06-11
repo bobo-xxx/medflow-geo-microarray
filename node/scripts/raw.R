@@ -93,21 +93,32 @@ process_raw_files <- function(files, out_dir, gse_id) {
 #' @param gse_id GEO series ID
 #' @return List with expr_matrix and status
 process_affy <- function(files, out_dir, gse_id) {
-  if (!requireNamespace("oligo", quietly = TRUE)) {
-    return(list(status = "error", msg = "Package 'oligo' required for CEL processing"))
+  message("Reading ", length(files), " CEL files...")
+
+  # Prefer affy::justRMA() for 3' IVT arrays (GPL570, GPL96 etc.)
+  # — no pthread dependency, works in all environments.
+  # Fall back to oligo::rma() for newer arrays (HuGene, HTA 2.0).
+  if (requireNamespace("affy", quietly = TRUE)) {
+    raw  <- affy::ReadAffy(filenames = files)
+    eset <- affy::rma(raw)
+    expr <- Biobase::exprs(eset)
+    return(list(
+      status = "success", expr_matrix = expr,
+      platform = "Affymetrix", pipeline = "affy::rma()"
+    ))
   }
 
-  message("Reading ", length(files), " CEL files...")
-  raw <- oligo::read.celfiles(files)
-  eset <- oligo::rma(raw)
-  expr <- Biobase::exprs(eset)
+  if (requireNamespace("oligo", quietly = TRUE)) {
+    raw  <- oligo::read.celfiles(files)
+    eset <- oligo::rma(raw)
+    expr <- Biobase::exprs(eset)
+    return(list(
+      status = "success", expr_matrix = expr,
+      platform = "Affymetrix", pipeline = "oligo::rma()"
+    ))
+  }
 
-  list(
-    status      = "success",
-    expr_matrix = expr,
-    platform    = "Affymetrix",
-    pipeline    = "oligo::rma()"
-  )
+  list(status = "error", msg = "Package 'affy' or 'oligo' required for CEL processing")
 }
 
 #' Process Illumina IDAT files with neqc

@@ -137,13 +137,17 @@ describe("Processor error handling", {
 
 describe("process_affy — CEL via RMA", {
 
-  it("applies read.celfiles → rma → exprs pipeline", {
+  it("applies ReadAffy → rma → exprs pipeline via affy (preferred)", {
     mock_matrix <- matrix(runif(100 * 4, 2, 14), nrow = 100, ncol = 4)
 
     local_mocked_bindings(
-      read.celfiles = function(files) list(),
+      requireNamespace = function(pkg, ...) pkg == "affy",
+      .package = "base"
+    )
+    local_mocked_bindings(
+      ReadAffy = function(filenames) list(),
       rma = function(raw, ...) list(),
-      .package = "oligo"
+      .package = "affy"
     )
     local_mocked_bindings(
       exprs = function(object) mock_matrix,
@@ -154,18 +158,39 @@ describe("process_affy — CEL via RMA", {
     expect_equal(result$status, "success")
     expect_true(is.matrix(result$expr_matrix))
     expect_equal(result$platform, "Affymetrix")
-    expect_match(result$pipeline, "rma")
+    expect_match(result$pipeline, "affy::rma")
     expect_equal(dim(result$expr_matrix), c(100, 4))
   })
 
-  it("returns error when requireNamespace fails for oligo", {
+  it("falls back to oligo when affy not available", {
+    mock_matrix <- matrix(runif(100 * 4, 2, 14), nrow = 100, ncol = 4)
+
+    local_mocked_bindings(
+      requireNamespace = function(pkg, ...) pkg == "oligo",
+      .package = "base"
+    )
+    local_mocked_bindings(
+      read.celfiles = function(files) list(),
+      rma = function(raw, ...) list(),
+      .package = "oligo"
+    )
+    local_mocked_bindings(
+      exprs = function(object) mock_matrix,
+      .package = "Biobase"
+    )
+
+    result <- process_affy(c("test.CEL"), tempdir(), "GSE12345")
+    expect_equal(result$status, "success")
+    expect_match(result$pipeline, "oligo::rma")
+  })
+
+  it("returns error when neither affy nor oligo available", {
     local_mocked_bindings(
       requireNamespace = function(pkg, ...) FALSE,
       .package = "base"
     )
     result <- process_affy(c("test.CEL"), tempdir(), "GSE12345")
     expect_equal(result$status, "error")
-    expect_match(result$msg, "oligo")
   })
 })
 
