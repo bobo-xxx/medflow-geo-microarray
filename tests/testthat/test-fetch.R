@@ -5,6 +5,7 @@ source("../../node/scripts/normalize.R")
 source("../../node/scripts/validate.R")
 source("../../node/scripts/species.R")
 source("../../node/scripts/annotate.R")
+source("../../node/scripts/pipeline.R")
 source("../../node/scripts/fetch.R")
 
 describe("is_methylation", {

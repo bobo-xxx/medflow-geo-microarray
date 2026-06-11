@@ -108,20 +108,34 @@ fetch_geo_data <- function(opts) {
 
       expr_matrix <- exprs(eset)
 
-      # Validate
+      # Validate pre-normalization
       validation <- validate_expr_matrix(expr_matrix)
       if (!validation$valid) {
-        result$warnings <- c(result$warnings, paste("Validation:", validation$reason))
+        result$warnings <- c(result$warnings, paste("Pre-validation:", validation$reason))
       }
 
-      # Normalize
-      expr_matrix <- normalize_expr_matrix(expr_matrix)
+      # Detect preprocessing pipeline from metadata
+      pdata <- pData(eset)
+      dp_cols <- grep("data.processing", colnames(pdata), ignore.case = TRUE, value = TRUE)
+      dp_text <- if (length(dp_cols) > 0) paste(as.character(pdata[1, dp_cols]), collapse = " ") else ""
+      pipeline <- detect_pipeline(dp_text)
+      message("Detected pipeline: ", pipeline)
+
+      # Apply pipeline-appropriate normalization
+      norm_result <- apply_pipeline_transform(expr_matrix, pipeline)
+      expr_matrix <- norm_result$expr
       colnames(expr_matrix) <- make.names(colnames(expr_matrix), unique = TRUE)
 
-      # Post-normalization validation (catch NaN/Inf from normalization bugs)
+      # Store pipeline + QN info for metadata
+      qn_status <- if (is_quantile_normalized(expr_matrix)) "applied" else "not_applied"
+
+      # Post-normalization validation
       post_val <- validate_expr_matrix(expr_matrix)
       if (!post_val$valid) {
         result$warnings <- c(result$warnings, paste("Post-normalization:", post_val$reason))
+      }
+      if (!is.null(norm_result$warning)) {
+        result$warnings <- c(result$warnings, norm_result$warning)
       }
 
       # Save probe-level
@@ -219,10 +233,13 @@ fetch_geo_data <- function(opts) {
       tax_id <- tryCatch(experimentData(eset)@other$sample_taxid, error = function(e) NULL)
       species_info <- detect_species(tax_id)
       result$metadata[[gpl_id]] <- list(
-        platform  = gpl_id,
-        organism  = species_info$species,
-        n_samples = ncol(expr_matrix),
-        n_probes  = nrow(expr_matrix)
+        platform       = gpl_id,
+        organism       = species_info$species,
+        n_samples      = ncol(expr_matrix),
+        n_probes       = nrow(expr_matrix),
+        pipeline       = pipeline,
+        qn_status      = qn_status,
+        transform      = norm_result$transform
       )
     }
 
