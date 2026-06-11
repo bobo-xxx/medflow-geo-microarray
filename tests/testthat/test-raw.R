@@ -189,17 +189,24 @@ describe("process_illumina — IDAT via neqc", {
 
   it("applies read.idat → neqc pipeline", {
     mock_matrix <- matrix(runif(100 * 4, 2, 14), nrow = 100, ncol = 4)
+    # Create dummy idat files so gunzip/re-scan works
+    tmpd <- file.path(tempdir(), "idat_test")
+    dir.create(tmpd, showWarnings=FALSE)
+    idat1 <- file.path(tmpd, "test1.idat"); file.create(idat1)
+    idat2 <- file.path(tmpd, "test2.idat"); file.create(idat2)
+
     local_mocked_bindings(
       read.idat = function(files, bgxfile, ...) mock_matrix,
       neqc = function(x) list(E = log2(mock_matrix + 1e-6)),
       .package = "limma"
     )
 
-    result <- process_illumina(c("test1.idat", "test2.idat"), tempdir(), "GSE12345")
+    result <- process_illumina(c(idat1, idat2), tempdir(), "GSE12345")
     expect_equal(result$status, "success")
     expect_equal(result$platform, "Illumina")
     expect_match(result$pipeline, "neqc")
     expect_equal(dim(result$expr_matrix), c(100, 4))
+    unlink(tmpd, recursive=TRUE)
   })
 
   it("returns error when requireNamespace fails for limma", {

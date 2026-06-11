@@ -132,10 +132,23 @@ process_illumina <- function(files, out_dir, gse_id) {
     return(list(status = "error", msg = "Package 'limma' required for IDAT processing"))
   }
 
-  # Filter to actual IDAT files only
+  # Filter to actual IDAT files, gunzip if needed
   idat_files <- grep("[.]idat([.]gz)?$", files, value = TRUE, ignore.case = TRUE)
   if (length(idat_files) == 0) {
     return(list(status = "error", msg = "No IDAT files found"))
+  }
+  # gunzip any .gz files
+  gz_files <- grep("[.]gz$", idat_files, value = TRUE, ignore.case = TRUE)
+  for (f in gz_files) {
+    out <- sub("[.]gz$", "", f)
+    if (!file.exists(out)) R.utils::gunzip(f, destname = out, overwrite = TRUE, remove = FALSE)
+  }
+  idat_files <- grep("[.]idat$", files, value = TRUE, ignore.case = TRUE)
+  # also re-scan for gunzipped files
+  all_files <- list.files(dirname(idat_files[1]), full.names = TRUE)
+  idat_files <- grep("[.]idat$", all_files, value = TRUE, ignore.case = TRUE)
+  if (length(idat_files) == 0) {
+    return(list(status = "error", msg = "No IDAT files found after gunzip"))
   }
 
   # Find BGX manifest file (required for Illumina expression IDAT)
