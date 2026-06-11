@@ -24,3 +24,4 @@ tests/testthat/_snaps/
 .Rproj.user/
 .Rhistory
 *.sqlite
+original/8-GEO/
