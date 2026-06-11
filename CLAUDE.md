@@ -134,6 +134,21 @@ conda activate geo-microarray-processing
 Rscript -e 'install.packages("AnnoProbe", repos = "https://cloud.r-project.org")'
 ```
 
+### preprocessCore Threading Fix
+
+On some systems (containers, HPC), `oligo::rma()` and `preprocessCore::normalize.quantiles()` fail with `ERROR; return code from pthread_create() is 22`. This is caused by OpenBLAS setting a stack size too small for preprocessCore threads.
+
+**Fix**: switch BLAS to netlib:
+
+```bash
+conda install -c conda-forge "blas=*=netlib"
+```
+
+Or reinstall preprocessCore without threading:
+```r
+BiocManager::install("preprocessCore", configure.args = "--disable-threading", force = TRUE)
+```
+
 ### Rules
 
 1. **Use the node's own env**: create from `env.yaml`, activate it for all development work.
