@@ -265,7 +265,7 @@ describe("process_agilent_1c — Agilent FE single-color", {
 
     local_mocked_bindings(
       read.maimages = function(files, source, green.only, ...) mock_rg,
-      normalizeBetweenArrays = function(rg, method) mock_matrix,
+      normalizeBetweenArrays = function(rg, method) list(E = mock_matrix),
       .package = "limma"
     )
 

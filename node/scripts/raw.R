@@ -210,13 +210,7 @@ process_agilent_1c <- function(files, out_dir, gse_id) {
 
   rg <- limma::read.maimages(txt_files, source = "agilent", green.only = TRUE)
   expr <- limma::normalizeBetweenArrays(rg, method = "quantile")
-
-  # Extract expression from green channel
-  if (!is.null(rg$E)) {
-    expr_matrix <- rg$E
-  } else {
-    expr_matrix <- as.matrix(rg$genes)
-  }
+  expr_matrix <- log2(pmax(expr$E, 0) + 1e-6)
 
   list(
     status      = "success",
