@@ -15,7 +15,7 @@ dependencies:
   - bioconductor-biobase
 
   # Bioconductor — raw data processing
-  - bioconductor-oligo
+  - bioconductor-affy
   - bioconductor-limma
 
   # CRAN — data manipulation

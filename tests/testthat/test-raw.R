@@ -162,26 +162,30 @@ describe("process_affy — CEL via RMA", {
     expect_equal(dim(result$expr_matrix), c(100, 4))
   })
 
-  it("falls back to oligo when affy not available", {
+  it("falls back to oligo with limma processing when affy not available", {
     mock_matrix <- matrix(runif(100 * 4, 2, 14), nrow = 100, ncol = 4)
 
     local_mocked_bindings(
-      requireNamespace = function(pkg, ...) pkg == "oligo",
+      requireNamespace = function(pkg, ...) pkg %in% c("oligo", "limma"),
       .package = "base"
     )
     local_mocked_bindings(
       read.celfiles = function(files) list(),
-      rma = function(raw, ...) list(),
       .package = "oligo"
     )
     local_mocked_bindings(
       exprs = function(object) mock_matrix,
       .package = "Biobase"
     )
+    local_mocked_bindings(
+      backgroundCorrect = function(x, method) x,
+      normalizeBetweenArrays = function(x, method) x,
+      .package = "limma"
+    )
 
     result <- process_affy(c("test.CEL"), tempdir(), "GSE12345")
     expect_equal(result$status, "success")
-    expect_match(result$pipeline, "oligo::rma")
+    expect_match(result$pipeline, "oligo::read.celfiles")
   })
 
   it("returns error when neither affy nor oligo available", {
@@ -285,29 +289,36 @@ describe("process_agilent_1c — Agilent FE single-color", {
 
 describe("process_nimblegen — PAIR via RMA", {
 
-  it("applies read.xys → rma pipeline", {
+  it("applies read.xysfiles + limma processing pipeline", {
     mock_exprs <- matrix(runif(100 * 4, 2, 14), nrow = 100, ncol = 4)
     local_mocked_bindings(
+      requireNamespace = function(pkg, ...) pkg %in% c("oligo", "limma"),
+      .package = "base"
+    )
+    local_mocked_bindings(
       read.xysfiles = function(files) list(),
-      rma = function(raw) NULL,
       .package = "oligo"
     )
-    # Mock exprs separately since rma returns an eset-like object
     local_mocked_bindings(
       exprs = function(eset) mock_exprs,
       .package = "Biobase"
+    )
+    local_mocked_bindings(
+      backgroundCorrect = function(x, method) x,
+      normalizeBetweenArrays = function(x, method) x,
+      .package = "limma"
     )
 
     result <- process_nimblegen(c("test1.PAIR", "test2.PAIR"), tempdir(), "GSE12345")
     expect_equal(result$status, "success")
     expect_equal(result$platform, "NimbleGen")
-    expect_match(result$pipeline, "rma")
+    expect_match(result$pipeline, "limma")
     expect_equal(dim(result$expr_matrix), c(100, 4))
   })
 
   it("returns error when requireNamespace fails for oligo", {
     local_mocked_bindings(
-      requireNamespace = function(pkg, ...) pkg != "oligo",
+      requireNamespace = function(pkg, ...) pkg == "limma",
       .package = "base"
     )
     result <- process_nimblegen(c("test.PAIR"), tempdir(), "GSE12345")

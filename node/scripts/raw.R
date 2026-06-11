@@ -110,11 +110,14 @@ process_affy <- function(files, out_dir, gse_id) {
 
   if (requireNamespace("oligo", quietly = TRUE)) {
     raw  <- oligo::read.celfiles(files)
-    eset <- oligo::rma(raw)
-    expr <- Biobase::exprs(eset)
+    expr <- Biobase::exprs(raw)
+    # Process via limma (no preprocessCore dependency)
+    expr <- limma::backgroundCorrect(expr, method = "normexp")
+    expr <- limma::normalizeBetweenArrays(expr, method = "quantile")
+    expr <- log2(expr + 1e-6)
     return(list(
       status = "success", expr_matrix = expr,
-      platform = "Affymetrix", pipeline = "oligo::rma()"
+      platform = "Affymetrix", pipeline = "oligo::read.celfiles()+limma::normexp+quantile+log2"
     ))
   }
 
@@ -232,7 +235,11 @@ process_agilent_1c <- function(files, out_dir, gse_id) {
 #' @return List with expr_matrix and status
 process_nimblegen <- function(files, out_dir, gse_id) {
   if (!requireNamespace("oligo", quietly = TRUE)) {
-    return(list(status = "error", msg = "Package 'oligo' required for NimbleGen processing"))
+    return(list(status = "error",
+      msg = "Package 'oligo' required for NimbleGen PAIR reading. Install: BiocManager::install('oligo')"))
+  }
+  if (!requireNamespace("limma", quietly = TRUE)) {
+    return(list(status = "error", msg = "Package 'limma' required for normalization"))
   }
 
   pair_files <- grep("[.]PAIR([.]gz)?$", files, value = TRUE, ignore.case = TRUE)
@@ -241,14 +248,18 @@ process_nimblegen <- function(files, out_dir, gse_id) {
   }
 
   message("Reading ", length(pair_files), " PAIR files...")
-  raw <- oligo::read.xysfiles(pair_files)
-  eset <- oligo::rma(raw)
-  expr <- Biobase::exprs(eset)
+  raw  <- oligo::read.xysfiles(pair_files)
+  expr <- Biobase::exprs(raw)  # raw intensities
+
+  # Process via limma (no preprocessCore dependency)
+  expr <- limma::backgroundCorrect(expr, method = "normexp")
+  expr <- limma::normalizeBetweenArrays(expr, method = "quantile")
+  expr <- log2(expr + 1e-6)
 
   list(
     status      = "success",
     expr_matrix = expr,
     platform    = "NimbleGen",
-    pipeline    = "oligo::read.xysfiles()+rma()"
+    pipeline    = "oligo::read.xysfiles()+limma::normexp+quantile+log2"
   )
 }
