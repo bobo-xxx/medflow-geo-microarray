@@ -25,7 +25,8 @@
 
 ### Task 4: Tests and verification
 
-- [x] 174 tests pass (0 FAIL) across both R 4.3 and R 4.5
+- [x] 217 tests pass (0 FAIL) across both R 4.3 and R 4.5
 - [x] Tier 2 end-to-end verified on GSE318047
+- [x] Mock-based unit tests for all 5 processors (local_mocked_bindings)
+- [x] Error path tests for requireNamespace failures + empty file lists
 - [ ] Real data verification: test processors against actual raw files (CEL/IDAT/GPR)
-- [ ] Mock-based unit tests for `process_illumina()`, `process_agilent_2c()`, `process_agilent_1c()`, `process_nimblegen()`
