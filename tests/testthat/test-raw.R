@@ -178,7 +178,6 @@ describe("process_affy — CEL via RMA", {
       .package = "Biobase"
     )
     local_mocked_bindings(
-      backgroundCorrect = function(x, method) x,
       normalizeBetweenArrays = function(x, method) x,
       .package = "limma"
     )
@@ -304,7 +303,6 @@ describe("process_nimblegen — PAIR via RMA", {
       .package = "Biobase"
     )
     local_mocked_bindings(
-      backgroundCorrect = function(x, method) x,
       normalizeBetweenArrays = function(x, method) x,
       .package = "limma"
     )

@@ -112,12 +112,11 @@ process_affy <- function(files, out_dir, gse_id) {
     raw  <- oligo::read.celfiles(files)
     expr <- Biobase::exprs(raw)
     # Process via limma (no preprocessCore dependency)
-    expr <- limma::backgroundCorrect(expr, method = "normexp")
     expr <- limma::normalizeBetweenArrays(expr, method = "quantile")
     expr <- log2(expr + 1e-6)
     return(list(
       status = "success", expr_matrix = expr,
-      platform = "Affymetrix", pipeline = "oligo::read.celfiles()+limma::normexp+quantile+log2"
+      platform = "Affymetrix", pipeline = "oligo::read.celfiles()+limma::quantile+log2"
     ))
   }
 
@@ -252,7 +251,6 @@ process_nimblegen <- function(files, out_dir, gse_id) {
   expr <- Biobase::exprs(raw)  # raw intensities
 
   # Process via limma (no preprocessCore dependency)
-  expr <- limma::backgroundCorrect(expr, method = "normexp")
   expr <- limma::normalizeBetweenArrays(expr, method = "quantile")
   expr <- log2(expr + 1e-6)
 
