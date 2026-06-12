@@ -144,6 +144,19 @@ describe("Issue 1: entg| prefix stripping", {
   })
 })
 
+describe("Tier 5 gene matrix suppression", {
+  it("SKILL.md output condition field exists for gene matrix", {
+    skill <- readLines("../../node/SKILL.md")
+    gene_output <- grep("expr_gene.*condition|annotation_tier.*<= 4", skill, value=TRUE)
+    expect_true(length(gene_output) > 0, "SKILL.md should document Tier 5 gene matrix skip")
+  })
+  it("fetch.R suppresses gene CSV at Tier 5", {
+    src <- readLines("../../node/scripts/fetch.R")
+    gene_write <- grep("anno_tier.*<.*5|annotation_tier.*<=.*4", src, value=TRUE)
+    expect_true(length(gene_write) > 0, "fetch.R should suppress gene CSV when anno_tier == 5")
+  })
+})
+
 describe("Issue 2: GPL suppl file fallback", {
   it("gpl_to_bioc_package returns NULL for Agilent GPL19072", {
     expect_null(gpl_to_bioc_package("GPL19072"))

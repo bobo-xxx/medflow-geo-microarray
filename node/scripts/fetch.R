@@ -364,8 +364,8 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
     anno_warning <- paste(anno_reasons, collapse = "; ")
   }
 
-  # Aggregate to gene level
-  if (gene_mapped && exists("probe2gene") && nrow(probe2gene) > 0) {
+  # Aggregate to gene level (skip at Tier 5 — probe IDs as gene names, no value)
+  if (gene_mapped && exists("probe2gene") && nrow(probe2gene) > 0 && anno_tier < 5) {
     expr_gene <- aggregate_probe_to_gene(expr_matrix, probe2gene)
     if (!is.null(expr_gene) && validate_gene_expression(expr_gene)) {
       gene_file <- file.path(out_gse_dir, paste0("expr_gene_", gse_id, gpl_suffix, ".csv"))

@@ -22,9 +22,12 @@ outputs:
   - name: expr_gene_{gse_id}_{gpl}.csv
     format: csv
     semantic_type: gene_expression_matrix
+    condition: annotation_tier <= 4
     description: >
       Gene-level expression matrix aggregated from probes via mean.
       Gene symbols as rows, samples as columns. One file per platform.
+      NOT produced when annotation_tier = 5 (probe IDs as gene names).
+      At Tier 5, only the probe matrix is authoritative.
 
   - name: metadata_{gse_id}_{gpl}.csv
     format: csv
