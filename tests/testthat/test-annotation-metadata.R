@@ -77,7 +77,52 @@ describe("Annotation tier metadata", {
       "Tier 4 failure should append reason")
   })
 
-  it("annotate_with_bioc_db maps GPL to package name", {
+})
+
+describe("gpl_to_bioc_package", {
+  it("maps GPL570 to hgu133plus2.db", {
+    expect_equal(gpl_to_bioc_package("GPL570"), "hgu133plus2.db")
+  })
+  it("maps GPL16686 to hugene20sttranscriptcluster.db", {
+    expect_equal(gpl_to_bioc_package("GPL16686"), "hugene20sttranscriptcluster.db")
+  })
+  it("maps GPL17586 to hta20transcriptcluster.db", {
+    expect_equal(gpl_to_bioc_package("GPL17586"), "hta20transcriptcluster.db")
+  })
+  it("case insensitive", {
+    expect_equal(gpl_to_bioc_package("gpl570"), "hgu133plus2.db")
+  })
+  it("returns NULL for unmapped GPL", {
+    expect_null(gpl_to_bioc_package("GPL99999"))
+  })
+})
+
+describe("annotate_with_bioc_db — fail first, then pass", {
+  it("returns NULL for unmapped GPL", {
+    expect_null(annotate_with_bioc_db(c("1","2"), "GPL99999"))
+  })
+  it("returns NULL when package not installed", {
+    local_mocked_bindings(
+      requireNamespace = function(pkg, ...) FALSE,
+      .package = "base"
+    )
+    expect_null(annotate_with_bioc_db(c("1","2"), "GPL570"))
+  })
+  it("returns probe-to-gene mapping when package is available", {
+    # Mock AnnotationDbi::select to return test data
+    local_mocked_bindings(
+      requireNamespace = function(pkg, ...) TRUE,
+      .package = "base"
+    )
+    # Actually test with real package since it's installed
+    if (requireNamespace("hugene20sttranscriptcluster.db", quietly = TRUE)) {
+      result <- annotate_with_bioc_db(c("16657445","99999999"), "GPL16686")
+      expect_false(is.null(result))
+      expect_true("probe_id" %in% colnames(result))
+      expect_true("gene_symbol" %in% colnames(result))
+      # 16657445 → OR4F5
+      expect_true("OR4F5" %in% result$gene_symbol)
+    }
   })
 
   it("result metadata includes annotation fields", {
