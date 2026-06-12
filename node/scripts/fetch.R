@@ -125,8 +125,8 @@ fetch_geo_data <- function(opts) {
       gpl_id  <- annotation(eset)
       gpl_suffix <- if (length(gse_matrix) > 1) paste0("_", gpl_id) else ""
 
-      process_expression_set(exprs(eset), eset, gpl_id, gpl_suffix,
-                             out_gse_dir, result)
+      result <- process_expression_set(exprs(eset), eset, gpl_id, gpl_suffix,
+                                        out_gse_dir, result)
       write_checkpoint(out_gse_dir, paste0("process_", gpl_id), "complete")
     }
     # Write completion sentinel
@@ -397,6 +397,8 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
     pipeline = pipeline, qn_status = qn_status, transform = norm_result$transform,
     annotation_tier = anno_tier, annotation_method = anno_method,
     annotation_warning = anno_warning)
+
+  result  # return modified result (R copy-on-modify requires explicit return)
 }
 
 #' Process a raw expression matrix without an ExpressionSet (Tiers 3-4)
