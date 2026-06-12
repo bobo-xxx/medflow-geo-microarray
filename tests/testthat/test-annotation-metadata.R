@@ -2,6 +2,7 @@ library(testthat)
 library(Biobase)
 
 source("../../node/scripts/exceptions.R")
+source("../../node/scripts/annotate.R")
 
 # ===========================================================================
 # Annotation tier metadata tracking
@@ -143,16 +144,42 @@ describe("Issue 1: entg| prefix stripping", {
   })
 })
 
-describe("Issue 2: GPL SOFT file fallback for Agilent", {
-  it("get_gpl_annotation enriches from SOFT when Table lacks gene symbol", {
-    # GPL19072: Agilent SurePrint G3 — Table() has no symbol column
-    # The SOFT file may have richer annotation
-    # This is a structural test — verifies the fallback function exists
-    expect_true(exists("get_gpl_annotation", mode = "function"))
-    # The function should handle GPLs without BioC annotation packages
-  })
+describe("Issue 2: GPL suppl file fallback", {
   it("gpl_to_bioc_package returns NULL for Agilent GPL19072", {
     expect_null(gpl_to_bioc_package("GPL19072"))
+  })
+  it("parse_gpl_suppl_soft extracts gene symbols from SOFT format", {
+    # Simulate a SOFT data table with GENE_SYMBOL column
+    soft_lines <- c(
+      "!Platform_table_begin",
+      "ID\tCOL\tROW\tSPOT_ID\tGENE_SYMBOL\tGENE_NAME\tSEQUENCE",
+      "A_19_P00315452\t1\t1\tControl\t---\t---\tACGT",
+      "A_19_P00315453\t1\t2\tSpot1\tGAPDH\tglyceraldehyde\tTGCA",
+      "A_19_P00315454\t1\t3\tSpot2\tBRCA1\tbreast cancer 1\tGCTA"
+    )
+    result <- parse_gpl_suppl_soft(soft_lines)
+    expect_equal(nrow(result), 2)  # control probe excluded
+    expect_equal(result$probe_id, c("A_19_P00315453", "A_19_P00315454"))
+    expect_equal(result$gene_symbol, c("GAPDH", "BRCA1"))
+  })
+  it("parse_gpl_suppl_soft excludes --- entries", {
+    soft_lines <- c(
+      "!Platform_table_begin",
+      "ID\tGENE_SYMBOL",
+      "probe1\t---",
+      "probe2\tACTB"
+    )
+    result <- parse_gpl_suppl_soft(soft_lines)
+    expect_equal(nrow(result), 1)
+    expect_equal(result$gene_symbol, "ACTB")
+  })
+  it("parse_gpl_suppl_soft returns NULL when no GENE_SYMBOL column", {
+    soft_lines <- c(
+      "!Platform_table_begin",
+      "ID\tCHROMOSOMAL_LOCATION\tSEQUENCE",
+      "probe1\tchr1:100-200\tACGT"
+    )
+    expect_null(parse_gpl_suppl_soft(soft_lines))
   })
 })
 

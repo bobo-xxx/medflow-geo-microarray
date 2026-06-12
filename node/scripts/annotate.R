@@ -83,8 +83,14 @@ get_gpl_annotation <- function(gpl_id, destdir = NULL, probe_ids = NULL) {
   if (is.na(gene_col)) {
     message("No gene symbol column in GPL ", gpl_id,
       ". Available: ", paste(col_names[1:min(10, length(col_names))], collapse = ", "))
-    result <- data.frame(probe_id = as.character(gpl_table[, id_col]),
-                         gene_symbol = NA_character_, stringsAsFactors = FALSE)
+    # Try supplementary annotation file (Agilent arrays often have richer GPL files)
+    suppl_result <- try_get_gpl_suppl(gpl, gpl_table, id_col, destdir)
+    if (!is.null(suppl_result)) {
+      result <- suppl_result
+    } else {
+      result <- data.frame(probe_id = as.character(gpl_table[, id_col]),
+                           gene_symbol = NA_character_, stringsAsFactors = FALSE)
+    }
   } else {
     result <- data.frame(
       probe_id    = as.character(gpl_table[, id_col]),
@@ -153,6 +159,126 @@ aggregate_probe_to_gene <- function(expr_matrix, gpl_table) {
 #' @return Cleaned character vector
 clean_gene_symbols <- function(symbols) {
   sub("^entg\\|", "", symbols)
+}
+
+#' Try downloading and parsing a GPL supplementary annotation file
+#'
+#' Checks Meta(gpl)$supplementary_file for a richer annotation table.
+#' Downloads if the file is under 1GB.
+#'
+#' @param gpl GPL object from GEOquery::getGEO
+#' @param gpl_table Current (limited) GPL table
+#' @param id_col Index of the ID column
+#' @param destdir Optional cache directory
+#' @return data.frame with probe_id and gene_symbol, or NULL
+try_get_gpl_suppl <- function(gpl, gpl_table, id_col, destdir = NULL) {
+  MAX_SIZE <- 1e9  # 1 GB limit
+
+  suppl_url <- tryCatch(Meta(gpl)$supplementary_file, error = function(e) NULL)
+  if (is.null(suppl_url) || nchar(suppl_url) == 0) return(NULL)
+
+  message("Trying GPL supplementary file: ", basename(suppl_url))
+
+  # Check cache
+  cache_file <- if (!is.null(destdir) && dir.exists(destdir)) {
+    file.path(destdir, paste0(basename(suppl_url), ".rds"))
+  } else NULL
+
+  if (!is.null(cache_file) && file.exists(cache_file)) {
+    message("  Loading cached suppl annotation")
+    return(readRDS(cache_file))
+  }
+
+  # Check size before download
+  tmp <- tempfile(fileext = ".gz")
+  h <- tryCatch(curl::curl_fetch_disk(suppl_url, tmp), error = function(e) NULL)
+  if (is.null(h)) {
+    # Fallback to base R download
+    tryCatch(download.file(suppl_url, tmp, method = "auto", quiet = TRUE),
+             error = function(e) { message("  Download failed"); return(NULL) })
+  }
+
+  file_size <- file.info(tmp)$size
+  if (is.na(file_size) || file_size == 0) { unlink(tmp); return(NULL) }
+  if (file_size > MAX_SIZE) {
+    message(sprintf("  Suppl file too large (%.0f MB > 1 GB limit), skipping",
+                    file_size / 1e6))
+    unlink(tmp); return(NULL)
+  }
+
+  # Parse
+  result <- tryCatch(parse_gpl_suppl_soft(gzfile(tmp)), error = function(e) {
+    message("  Parse failed: ", e$message); NULL
+  })
+  unlink(tmp)
+
+  if (is.null(result) || nrow(result) == 0) return(NULL)
+
+  message(sprintf("  Extracted %d probe→gene mappings from suppl file", nrow(result)))
+
+  # Cache
+  if (!is.null(cache_file)) saveRDS(result, cache_file)
+
+  result
+}
+
+#' Parse a GPL supplementary SOFT file for gene symbol annotations
+#'
+#' Reads the tab-delimited data table from a GPL SOFT file and extracts
+#' probe ID → gene symbol mappings. Used when Table(gpl) lacks gene symbols.
+#'
+#' @param lines Character vector of SOFT file lines (or path to file)
+#' @return data.frame with probe_id and gene_symbol, or NULL
+parse_gpl_suppl_soft <- function(lines_or_path) {
+  # If given a file path, read it
+  if (length(lines_or_path) == 1 && file.exists(lines_or_path)) {
+    lines_or_path <- readLines(lines_or_path, warn = FALSE)
+  }
+
+  # Find the data table section
+  table_begin <- grep("^!Platform_table_begin", lines_or_path, ignore.case = TRUE)
+  if (length(table_begin) == 0) return(NULL)
+
+  header_line <- table_begin[1] + 1
+  if (header_line > length(lines_or_path)) return(NULL)
+
+  # Parse header
+  headers <- strsplit(lines_or_path[header_line], "\t")[[1]]
+
+  # Check for gene symbol column
+  symbol_col <- grep("GENE_SYMBOL|gene_symbol|Gene Symbol|SYMBOL", headers, ignore.case = TRUE)[1]
+  id_col <- grep("^ID$", headers, ignore.case = FALSE)[1]
+  if (is.na(symbol_col) || is.na(id_col)) return(NULL)
+
+  # Parse data rows (skip header, stop at table_end or !)
+  data_start <- header_line + 1
+  data_end <- length(lines_or_path)
+  table_end <- grep("^!Platform_table_end", lines_or_path, ignore.case = TRUE)
+  if (length(table_end) > 0) data_end <- table_end[1] - 1
+
+  data_lines <- lines_or_path[data_start:data_end]
+  data_lines <- data_lines[!grepl("^[!]|^$", data_lines)]
+  if (length(data_lines) == 0) return(NULL)
+
+  # Parse each data line as tab-separated
+  parsed <- strsplit(data_lines, "\t")
+  # Filter to rows with enough columns
+  ncols_expected <- length(headers)
+  valid <- vapply(parsed, length, 0L) >= ncols_expected
+  parsed <- parsed[valid]
+
+  probe_ids <- vapply(parsed, `[`, "", id_col)
+  symbols  <- vapply(parsed, `[`, "", symbol_col)
+
+  # Build result, exclude --- entries
+  result <- data.frame(
+    probe_id    = probe_ids,
+    gene_symbol = symbols,
+    stringsAsFactors = FALSE
+  )
+  result <- result[!grepl("^---$", result$gene_symbol) & result$gene_symbol != "", ]
+  if (nrow(result) == 0) return(NULL)
+  result
 }
 
 #' Map GPL platform ID to Bioconductor annotation package name
