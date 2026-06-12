@@ -276,8 +276,10 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
   # Save probe-level
   gse_id <- result$gse_id
   probe_file <- file.path(out_gse_dir, paste0("expr_probe_", gse_id, gpl_suffix, ".csv"))
-  if (!safe_write_csv(expr_matrix, probe_file)) result$warnings <- c(result$warnings, "Failed to write probe matrix")
-  report_and_classify("disk full or write error — probe matrix save failed")
+  if (!safe_write_csv(expr_matrix, probe_file)) {
+    result$warnings <- c(result$warnings, "Failed to write probe matrix")
+    report_and_classify("disk full or write error — probe matrix save failed")
+  }
   result$probe_file <- c(result$probe_file, probe_file)
 
   # 5-tier gene annotation using fData from ExpressionSet
@@ -320,6 +322,19 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
   if (!gene_mapped) {
     if (requireNamespace("AnnoProbe", quietly = TRUE)) {
       message("Tier 4 annotation: attempting AnnoProbe pipe for ", gpl_id)
+      ap_result <- tryCatch(
+        AnnoProbe::idmap(gpl_id, type = "pipe"),
+        error = function(e) { message("AnnoProbe failed: ", e$message); NULL }
+      )
+      if (!is.null(ap_result) && nrow(ap_result) > 0) {
+        probe2gene <- data.frame(
+          probe_id    = as.character(ap_result$probe_id),
+          gene_symbol = as.character(ap_result$symbol),
+          stringsAsFactors = FALSE
+        )
+        probe2gene <- probe2gene[!is.na(probe2gene$gene_symbol) & probe2gene$gene_symbol != "", ]
+        gene_mapped <- nrow(probe2gene) > 0
+      }
     }
   }
 
@@ -382,8 +397,10 @@ process_raw_matrix <- function(expr_matrix, gpl_guess, gpl_suffix,
   colnames(expr_matrix) <- make.names(colnames(expr_matrix), unique = TRUE)
 
   probe_file <- file.path(out_gse_dir, paste0("expr_probe_", gse_id, gpl_suffix, ".csv"))
-  if (!safe_write_csv(expr_matrix, probe_file)) result$warnings <- c(result$warnings, "Failed to write probe matrix")
-  report_and_classify("disk full or write error — probe matrix save failed")
+  if (!safe_write_csv(expr_matrix, probe_file)) {
+    result$warnings <- c(result$warnings, "Failed to write probe matrix")
+    report_and_classify("disk full or write error — probe matrix save failed")
+  }
   result$probe_file <- c(result$probe_file, probe_file)
 
   # GPL annotation only (no fData available from raw files)

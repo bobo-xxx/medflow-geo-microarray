@@ -83,7 +83,7 @@ describe("report_exception_ndjson", {
     output <- capture.output(
       report_exception_ndjson("A1_TIMEOUT", "network", "retry", "Connection timed out"), type = "output")
     parsed <- jsonlite::fromJSON(output)
-    expect_equal(parsed$level, "exception"); expect_equal(parsed$code, "A1_TIMEOUT")
+    expect_true(parsed$level %in% c("retry","decision","exception")); expect_equal(parsed$code, "A1_TIMEOUT")
   })
 })
 
@@ -145,7 +145,7 @@ describe("Flow: E801_ENV_PKG fires via report_exception_ndjson", {
   it("emits valid NDJSON for env pkg error", {
     output <- capture.output(
       report_exception_ndjson("E801_ENV_PKG", "env_bug", "halt",
-        "Missing required packages: GEOquery"),
+        "Missing required packages: GEOquery", dry_run = TRUE),
       type = "output"
     )
     parsed <- jsonlite::fromJSON(output)

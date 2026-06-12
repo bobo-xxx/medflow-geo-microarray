@@ -251,13 +251,28 @@ report_and_classify <- function(msg) {
 #' @param nature Exception nature (network, data_corrupt, data_insufficient, ...)
 #' @param action Response action (retry, skip_with_warning, halt, prompt)
 #' @param msg Human-readable message
-report_exception_ndjson <- function(code, nature, action, msg) {
+report_exception_ndjson <- function(code, nature, action, msg, exit_code = 1, dry_run = FALSE) {
+  # Map action to the correct NDJSON level
+  level <- switch(action,
+    retry              = "retry",
+    skip_with_warning  = "decision",
+    halt               = "exception",
+    prompt             = "prompt",
+    escalate           = "exception",
+    "exception"  # default
+  )
+
   obj <- list(
-    level  = "exception",
+    level  = level,
     code   = code,
     nature = nature,
     action = action,
     msg    = msg
   )
   cat(jsonlite::toJSON(obj, auto_unbox = TRUE), "\n", sep = "")
+
+  # Halt actually quits (skip in test mode)
+  if (action == "halt" && !dry_run) {
+    quit(status = exit_code)
+  }
 }

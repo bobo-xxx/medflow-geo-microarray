@@ -41,13 +41,13 @@ parameters:
     type: choice
     choices: [fetch, qc, clean]
     required: true
-    bind: upstream
+    bind: config
     description: Operation to perform (fetch data, quality check, or clean/normalize)
 
   - name: --gse-id
     type: string
     required: true
-    bind: upstream
+    bind: config
     description: GEO Series identifier (e.g., GSE100155)
 
   - name: --outdir
@@ -60,7 +60,7 @@ parameters:
   - name: --input
     type: file
     required: false
-    bind: upstream
+    bind: config
     description: Input expression matrix CSV (required for qc and clean subcommands)
 
   - name: --proxy
@@ -223,9 +223,10 @@ appropriate annotation database:
 | 10116 | *Rattus norvegicus* | `org.Rn.eg.db` | 1 — validated |
 | Other | Any | GPL table + AnnoProbe | 2 — pass-through |
 
-Tier-1 species get validated gene symbol mapping against the species
-annotation database. Tier-2 species use the 5-tier annotation fallback
-chain with a warning; if all tiers fail, probe IDs are used as gene symbols.
+All species use the same 5-tier gene annotation fallback chain.
+No species-specific annotation databases are required — gene
+symbols come from fData, GPL tables, or AnnoProbe pipe alignment.
+If all tiers fail, probe IDs are used as gene symbols with a warning.
 
 ### Gene Annotation Fallback
 
