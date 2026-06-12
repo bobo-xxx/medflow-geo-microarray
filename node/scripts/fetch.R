@@ -87,6 +87,23 @@ fetch_geo_data <- function(opts) {
     on.exit(Sys.unsetenv(c("http_proxy", "https_proxy")))
   }
 
+  # ---- Tier 1: Check local cache ----
+  cache <- validate_cache(out_gse_dir)
+  if (cache$status == "valid") {
+    message("Using cached data for ", gse_id)
+    result$status <- "success_local"
+    result$warnings <- c(result$warnings, "Using locally cached data")
+    # Return early — files already exist, no need to re-process
+    # File list is reconstructed from directory contents
+    probe_csvs <- list.files(out_gse_dir, pattern = "expr_probe_.*\\.csv$", full.names = TRUE)
+    gene_csvs  <- list.files(out_gse_dir, pattern = "expr_gene_.*\\.csv$", full.names = TRUE)
+    meta_csvs  <- list.files(out_gse_dir, pattern = "metadata_.*\\.csv$", full.names = TRUE)
+    result$probe_file <- probe_csvs
+    result$gene_file  <- gene_csvs
+    result$meta_file  <- meta_csvs
+    return(result)
+  }
+
   # ---- Tier 2: Try processed series matrix ----
   message("Tier 2: Attempting series matrix download...")
   gse_matrix <- retry_with_backoff(function() {
@@ -116,10 +133,8 @@ fetch_geo_data <- function(opts) {
   message("Tier 3: Checking supplementary files...")
   suppl_dir <- file.path(out_gse_dir, "suppl")
   if (!dir.exists(suppl_dir)) {
-    tryCatch({
+    retry_with_backoff(function() {
       getGEOSuppFiles(gse_id, makeDirectory = FALSE, baseDir = out_gse_dir)
-    }, error = function(e) {
-      message("Failed to download suppl files: ", e$message)
     })
   }
 
@@ -192,9 +207,9 @@ fetch_geo_data <- function(opts) {
   result$warnings <- c(result$warnings,
     "No expression data available; returning metadata only")
 
-  gse_meta <- tryCatch({
+  gse_meta <- retry_with_backoff(function() {
     getGEO(gse_id, GSEMatrix = FALSE)
-  }, error = function(e) NULL)
+  })
 
   if (!is.null(gse_meta)) {
     result$metadata$basic <- list(

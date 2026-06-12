@@ -345,6 +345,8 @@ Result on skip/methylation:
 
 ## Error Handling
 
+Exception handling is centralized in `scripts/exceptions.R` with
+structured NDJSON codes (A=Network, B=Data, C=Resource, W=Write, E=Environment).
 See [ERROR_CODES.md](references/ERROR_CODES.md) for detailed error
 code specifications and recovery strategies.
 
