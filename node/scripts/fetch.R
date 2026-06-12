@@ -286,6 +286,10 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
   fdata <- fData(eset)
   gene_mapped <- FALSE
   probe2gene <- NULL
+  anno_tier  <- NA_integer_
+  anno_method <- NA_character_
+  anno_warning <- NA_character_
+  anno_reasons <- character(0)
 
   gene_col <- intersect(colnames(fdata), c("Gene Symbol", "GENE_SYMBOL", "Symbol"))[1]
   if (!is.na(gene_col)) {
@@ -295,6 +299,10 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
       stringsAsFactors = FALSE)
     probe2gene <- probe2gene[!is.na(probe2gene$gene_symbol) & probe2gene$gene_symbol != "", ]
     gene_mapped <- nrow(probe2gene) > 0
+    if (gene_mapped) { anno_tier <- 1L; anno_method <- paste0("fData:", gene_col) }
+    else anno_reasons <- c(anno_reasons, "Tier 1: no Gene Symbol column with valid entries")
+  } else {
+    anno_reasons <- c(anno_reasons, "Tier 1: no Gene Symbol/GENE_SYMBOL/Symbol column in fData")
   }
 
   if (!gene_mapped) {
@@ -306,6 +314,10 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
                                stringsAsFactors = FALSE)
       probe2gene <- probe2gene[!is.na(probe2gene$gene_symbol) & probe2gene$gene_symbol != "", ]
       gene_mapped <- nrow(probe2gene) > 0
+      if (gene_mapped) { anno_tier <- 2L; anno_method <- "gene_assignment" }
+      else anno_reasons <- c(anno_reasons, "Tier 2: gene_assignment column present but no valid symbols extracted")
+    } else {
+      anno_reasons <- c(anno_reasons, "Tier 2: no gene_assignment column in fData")
     }
   }
 
@@ -316,6 +328,9 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
         "gene_symbol" %in% colnames(gpl_table) &&
         any(!is.na(gpl_table$gene_symbol) & gpl_table$gene_symbol != "")) {
       probe2gene <- gpl_table; gene_mapped <- TRUE
+      anno_tier <- 3L; anno_method <- "GPL_table"
+    } else {
+      anno_reasons <- c(anno_reasons, "Tier 3: GPL table unavailable or no gene symbol column")
     }
   }
 
@@ -334,7 +349,13 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
         )
         probe2gene <- probe2gene[!is.na(probe2gene$gene_symbol) & probe2gene$gene_symbol != "", ]
         gene_mapped <- nrow(probe2gene) > 0
+        if (gene_mapped) { anno_tier <- 4L; anno_method <- "AnnoProbe_pipe" }
+        else anno_reasons <- c(anno_reasons, "Tier 4: AnnoProbe returned no valid mappings")
+      } else {
+        anno_reasons <- c(anno_reasons, "Tier 4: AnnoProbe idmap() failed or returned empty")
       }
+    } else {
+      anno_reasons <- c(anno_reasons, "Tier 4: AnnoProbe not installed")
     }
   }
 
@@ -345,6 +366,8 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
       stringsAsFactors = FALSE)
     result$warnings <- c(result$warnings, "No gene annotation found; using probe IDs as gene symbols")
     gene_mapped <- TRUE
+    anno_tier <- 5L; anno_method <- "probe_ids"
+    anno_warning <- paste(anno_reasons, collapse = "; ")
   }
 
   # Aggregate to gene level
@@ -371,7 +394,9 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
   result$metadata[[gpl_id]] <- list(
     platform = gpl_id, organism = species_info$species,
     n_samples = ncol(expr_matrix), n_probes = nrow(expr_matrix),
-    pipeline = pipeline, qn_status = qn_status, transform = norm_result$transform)
+    pipeline = pipeline, qn_status = qn_status, transform = norm_result$transform,
+    annotation_tier = anno_tier, annotation_method = anno_method,
+    annotation_warning = anno_warning)
 }
 
 #' Process a raw expression matrix without an ExpressionSet (Tiers 3-4)
@@ -419,5 +444,7 @@ process_raw_matrix <- function(expr_matrix, gpl_guess, gpl_suffix,
   result$metadata[[gpl_guess]] <- list(
     platform = gpl_guess, organism = "unknown",
     n_samples = ncol(expr_matrix), n_probes = nrow(expr_matrix),
-    pipeline = "raw_processor", qn_status = "not_applied", transform = "none")
+    pipeline = "raw_processor", qn_status = "not_applied", transform = "none",
+    annotation_tier = NA_integer_, annotation_method = NA_character_,
+    annotation_warning = "Raw data processing — gene annotation deferred")
 }
