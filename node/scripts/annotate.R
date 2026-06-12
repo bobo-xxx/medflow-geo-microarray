@@ -33,7 +33,7 @@ extract_gene_from_assignment <- function(x) {
 #' @param gpl_id GPL identifier (e.g., "GPL570")
 #' @param destdir Optional directory for caching
 #' @return data.frame with probe_id and gene_symbol columns, or NULL
-get_gpl_annotation <- function(gpl_id, destdir = NULL) {
+get_gpl_annotation <- function(gpl_id, destdir = NULL, probe_ids = NULL) {
   if (is.null(gpl_id) || gpl_id == "") return(NULL)
 
   gpl_id <- toupper(gpl_id)
@@ -145,6 +145,16 @@ aggregate_probe_to_gene <- function(expr_matrix, gpl_table) {
   expr_gene
 }
 
+#' Clean gene symbols from Bioconductor annotation DB output
+#'
+#' Strips entg| prefix that some BioC annotation packages return.
+#'
+#' @param symbols Character vector of gene symbols
+#' @return Cleaned character vector
+clean_gene_symbols <- function(symbols) {
+  sub("^entg\\|", "", symbols)
+}
+
 #' Map GPL platform ID to Bioconductor annotation package name
 #'
 #' Returns the .db package name for common Affymetrix platforms.
@@ -195,7 +205,7 @@ annotate_with_bioc_db <- function(probe_ids, gpl_id) {
 
   data.frame(
     probe_id    = as.character(result$PROBEID),
-    gene_symbol = as.character(result$SYMBOL),
+    gene_symbol = clean_gene_symbols(as.character(result$SYMBOL)),
     stringsAsFactors = FALSE
   )
 }

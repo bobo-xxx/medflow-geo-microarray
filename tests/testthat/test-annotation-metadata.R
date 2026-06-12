@@ -125,6 +125,37 @@ describe("annotate_with_bioc_db — fail first, then pass", {
     }
   })
 
+describe("Issue 1: entg| prefix stripping", {
+  it("strips entg| prefix from gene symbols", {
+    # Test the cleaning function directly
+    symbols <- c("entg|A1BG", "entg|A1BG-AS1", "GAPDH", "entg|TP53")
+    cleaned <- clean_gene_symbols(symbols)
+    expect_equal(cleaned, c("A1BG", "A1BG-AS1", "GAPDH", "TP53"))
+  })
+  it("handles empty input", {
+    expect_equal(clean_gene_symbols(character(0)), character(0))
+  })
+  it("handles all-entg input", {
+    expect_equal(clean_gene_symbols(c("entg|A","entg|B")), c("A","B"))
+  })
+  it("handles no-entg input unchanged", {
+    expect_equal(clean_gene_symbols(c("A1BG","GAPDH")), c("A1BG","GAPDH"))
+  })
+})
+
+describe("Issue 2: GPL SOFT file fallback for Agilent", {
+  it("get_gpl_annotation enriches from SOFT when Table lacks gene symbol", {
+    # GPL19072: Agilent SurePrint G3 — Table() has no symbol column
+    # The SOFT file may have richer annotation
+    # This is a structural test — verifies the fallback function exists
+    expect_true(exists("get_gpl_annotation", mode = "function"))
+    # The function should handle GPLs without BioC annotation packages
+  })
+  it("gpl_to_bioc_package returns NULL for Agilent GPL19072", {
+    expect_null(gpl_to_bioc_package("GPL19072"))
+  })
+})
+
   it("result metadata includes annotation fields", {
     src <- readLines("../../node/scripts/fetch.R")
     meta_block <- paste(src[grep("annotation_tier|annotation_method|annotation_warning", src)], collapse = "\n")

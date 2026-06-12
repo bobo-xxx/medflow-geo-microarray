@@ -330,7 +330,8 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
       probe2gene <- gpl_table; gene_mapped <- TRUE
       anno_tier <- 3L; anno_method <- "GPL_table"
     } else {
-      anno_reasons <- c(anno_reasons, "Tier 3: GPL table unavailable or no gene symbol column")
+      avail_cols <- if (!is.null(gpl_table)) paste(colnames(gpl_table), collapse=",") else "table unavailable"
+      anno_reasons <- c(anno_reasons, paste0("Tier 3: GPL table has no gene symbol column. Available: ", avail_cols))
     }
   }
 
