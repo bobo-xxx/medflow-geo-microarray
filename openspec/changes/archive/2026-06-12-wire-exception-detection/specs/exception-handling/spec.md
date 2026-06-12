@@ -44,7 +44,7 @@ Every error-producing operation in the node SHALL call `detect_exception()` to c
 
 ## MODIFIED Requirements
 
-### Requirement: Report an exception as structured NDJSON
+### Requirement: Structured NDJSON exception reporting
 
 The system SHALL report all exceptions as structured NDJSON with machine-readable codes. Exception codes SHALL be emitted at the error site, not deferred to the caller.
 
