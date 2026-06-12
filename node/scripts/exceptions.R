@@ -3,6 +3,9 @@
 # Categories: A=Network, B=Data, C=Resource, W=Write, L=Lifecycle, E=Environment
 # All exceptions flow through report_exception_ndjson() for machine-readable output.
 
+# Exception accumulator for .run_result.json (also initialized in report.R)
+if (!exists(".exceptions")) .exceptions <- list()
+
 #' Execute a function with a timeout (best-effort via R's withTimeout)
 #'
 #' Uses R.utils::withTimeout if available, otherwise runs without timeout.
@@ -276,6 +279,9 @@ report_exception_ndjson <- function(code, nature, action, msg, exit_code = 1, dr
     msg    = msg
   )
   cat(jsonlite::toJSON(obj, auto_unbox = TRUE), "\n", sep = "")
+
+  # Accumulate for .run_result.json
+  .exceptions <<- c(.exceptions, list(obj))
 
   # Halt actually quits (skip in test mode)
   if (action == "halt" && !dry_run) {

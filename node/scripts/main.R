@@ -166,6 +166,10 @@ do_fetch <- function(opts) {
   }
 
   report_result(result$status, files = files, metadata = result$metadata)
+  # Write provenance inside the GSE directory (alongside CSVs)
+  prov_dir <- if (!is.null(opts$gse_id)) file.path(opts$outdir, opts$gse_id) else opts$outdir
+  write_run_result(prov_dir, result, opts, 0,
+    c(format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ"), format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ")))
 }
 
 #' QC subcommand
@@ -217,6 +221,8 @@ do_clean <- function(opts) {
 # -------------------------------------------------------------------
 
 main <- function() {
+  started_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ")
+  exit_code  <- 0
   opts <- parse_args()
 
   # Environment check (after arg parsing — help text shouldn't require packages)
