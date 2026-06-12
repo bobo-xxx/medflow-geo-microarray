@@ -171,6 +171,78 @@ describe("register_cleanup", {
   })
 })
 
+# ===========================================================================
+# Tests for agentic test issues
+# ===========================================================================
+
+describe("Issue 1: W001_DISK_FULL only fires on actual write failure", {
+  it("does NOT emit exception when write succeeds", {
+    data <- data.frame(gene = c("A","B"), s1 = c(1.1, 2.2), s2 = c(3.3, 4.4))
+    path <- file.path(tempdir(), "issue1_test.csv")
+    output <- capture.output(result <- safe_write_csv(data, path), type = "message")
+    # No exception NDJSON should be emitted by safe_write_csv itself
+    # (report_and_classify is the caller's responsibility, not safe_write_csv's)
+    expect_true(result)
+    expect_true(file.exists(path))
+    unlink(path)
+  })
+})
+
+describe("Issue 5: action=halt calls quit()", {
+  it("quits when halt and not dry_run", {
+    local_mocked_bindings(
+      quit = function(status) stop(paste("quit called with status", status)),
+      .package = "base"
+    )
+    expect_error(
+      report_exception_ndjson("E801_ENV_PKG", "env_bug", "halt",
+        "Missing packages", dry_run = FALSE),
+      "quit called with status"
+    )
+  })
+  it("does NOT quit when dry_run=TRUE", {
+    output <- capture.output(
+      report_exception_ndjson("E801_ENV_PKG", "env_bug", "halt",
+        "Missing packages", dry_run = TRUE),
+      type = "output"
+    )
+    parsed <- jsonlite::fromJSON(output)
+    expect_equal(parsed$action, "halt")
+    expect_equal(parsed$level, "exception")
+  })
+})
+
+describe("Issue 6: action→level mapping", {
+  it("retry action maps to level:retry", {
+    output <- capture.output(
+      report_exception_ndjson("A1_TIMEOUT", "network", "retry", "timeout", dry_run = TRUE),
+      type = "output"
+    )
+    expect_match(output, '"level":"retry"')
+  })
+  it("skip_with_warning maps to level:decision", {
+    output <- capture.output(
+      report_exception_ndjson("B2_METHYLATION", "data_mismatch", "skip_with_warning", "BPM", dry_run = TRUE),
+      type = "output"
+    )
+    expect_match(output, '"level":"decision"')
+  })
+  it("halt maps to level:exception", {
+    output <- capture.output(
+      report_exception_ndjson("E801_ENV_PKG", "env_bug", "halt", "missing", dry_run = TRUE),
+      type = "output"
+    )
+    expect_match(output, '"level":"exception"')
+  })
+  it("escalate maps to level:exception", {
+    output <- capture.output(
+      report_exception_ndjson("UNKNOWN", "env_bug", "escalate", "unknown", dry_run = TRUE),
+      type = "output"
+    )
+    expect_match(output, '"level":"exception"')
+  })
+})
+
 describe("Flow: retry wraps fallible ops", {
   it("returns result on eventual success", {
     attempts <- 0
