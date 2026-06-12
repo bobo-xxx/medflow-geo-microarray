@@ -47,11 +47,11 @@ describe("Annotation tier metadata", {
     expect_true(any(grepl("anno_method.*GPL_table", anno_block)),
       "Tier 3 should set method to GPL_table")
 
-    # Tier 4 tracked
+    # Tier 4 tracked (Bioconductor annotation DB)
     expect_true(any(grepl("anno_tier <- 4L", anno_block, fixed = TRUE)),
       "Tier 4 should set anno_tier = 4L")
-    expect_true(any(grepl("anno_method.*AnnoProbe", anno_block)),
-      "Tier 4 should set method to AnnoProbe_pipe")
+    expect_true(any(grepl("BioC_DB", anno_block)),
+      "Tier 4 should use Bioconductor annotation DB")
 
     # Tier 5 tracked with warning
     expect_true(any(grepl("anno_tier <- 5L", anno_block, fixed = TRUE)),
@@ -75,6 +75,9 @@ describe("Annotation tier metadata", {
       "Tier 3 failure should append reason")
     expect_true(any(grepl("anno_reasons.*Tier 4", anno_block)),
       "Tier 4 failure should append reason")
+  })
+
+  it("annotate_with_bioc_db maps GPL to package name", {
   })
 
   it("result metadata includes annotation fields", {

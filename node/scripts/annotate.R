@@ -4,7 +4,7 @@
 #   1. fData() direct column (Gene Symbol / GENE_SYMBOL / Symbol)
 #   2. fData() gene_assignment column (parse "ACC // SYMBOL // desc")
 #   3. GPL annotation table (GEOquery::Table(getGEO(GPL)))
-#   4. AnnoProbe pipe alignment (probe FASTA -> genome -> GENCODE)
+#   4. Bioconductor annotation DB (platform-specific .db package)
 #   5. Probe IDs as gene symbols (last resort with warning)
 
 library(GEOquery)
@@ -143,4 +143,59 @@ aggregate_probe_to_gene <- function(expr_matrix, gpl_table) {
   expr_gene$gene_symbol <- NULL
 
   expr_gene
+}
+
+#' Map GPL platform ID to Bioconductor annotation package name
+#'
+#' Returns the .db package name for common Affymetrix platforms.
+#' These packages provide probe ID → gene symbol mappings via AnnotationDbi.
+#'
+#' @param gpl_id GPL identifier (e.g., "GPL570")
+#' @return Character package name, or NULL if no mapping exists
+gpl_to_bioc_package <- function(gpl_id) {
+  mapping <- c(
+    "GPL570"   = "hgu133plus2.db",
+    "GPL96"    = "hgu133a.db",
+    "GPL571"   = "hgu133a2.db",
+    "GPL16686" = "hugene20sttranscriptcluster.db",
+    "GPL17586" = "hta20transcriptcluster.db",
+    "GPL6244"  = "hugene10sttranscriptcluster.db",
+    "GPL1261"  = "mouse4302.db",
+    "GPL339"   = "mouse430a2.db"
+  )
+  gpl_id <- toupper(gpl_id)
+  if (gpl_id %in% names(mapping)) unname(mapping[gpl_id]) else NULL
+}
+
+#' Annotate probes using Bioconductor annotation database
+#'
+#' Maps probe IDs to gene symbols using a platform-specific .db package.
+#'
+#' @param probe_ids Character vector of probe IDs
+#' @param gpl_id GPL platform identifier
+#' @return data.frame with probe_id and gene_symbol columns, or NULL
+annotate_with_bioc_db <- function(probe_ids, gpl_id) {
+  pkg <- gpl_to_bioc_package(gpl_id)
+  if (is.null(pkg)) return(NULL)
+  if (!requireNamespace(pkg, quietly = TRUE)) return(NULL)
+
+  suppressMessages({
+    db <- get(pkg, envir = asNamespace(pkg))
+    mapping <- tryCatch(
+      AnnotationDbi::select(db, keys = probe_ids,
+                            columns = "SYMBOL", keytype = "PROBEID"),
+      error = function(e) { message("  BioC DB query failed: ", e$message); NULL }
+    )
+  })
+
+  if (is.null(mapping) || nrow(mapping) == 0) return(NULL)
+
+  result <- mapping[!is.na(mapping$SYMBOL) & mapping$SYMBOL != "", ]
+  if (nrow(result) == 0) return(NULL)
+
+  data.frame(
+    probe_id    = as.character(result$PROBEID),
+    gene_symbol = as.character(result$SYMBOL),
+    stringsAsFactors = FALSE
+  )
 }

@@ -335,27 +335,19 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
   }
 
   if (!gene_mapped) {
-    if (requireNamespace("AnnoProbe", quietly = TRUE)) {
-      message("Tier 4 annotation: attempting AnnoProbe pipe for ", gpl_id)
-      ap_result <- tryCatch(
-        AnnoProbe::idmap(gpl_id, type = "pipe"),
-        error = function(e) { message("AnnoProbe failed: ", e$message); NULL }
-      )
-      if (!is.null(ap_result) && nrow(ap_result) > 0) {
-        probe2gene <- data.frame(
-          probe_id    = as.character(ap_result$probe_id),
-          gene_symbol = as.character(ap_result$symbol),
-          stringsAsFactors = FALSE
-        )
-        probe2gene <- probe2gene[!is.na(probe2gene$gene_symbol) & probe2gene$gene_symbol != "", ]
-        gene_mapped <- nrow(probe2gene) > 0
-        if (gene_mapped) { anno_tier <- 4L; anno_method <- "AnnoProbe_pipe" }
-        else anno_reasons <- c(anno_reasons, "Tier 4: AnnoProbe returned no valid mappings")
-      } else {
-        anno_reasons <- c(anno_reasons, "Tier 4: AnnoProbe idmap() failed or returned empty")
-      }
+    message("Tier 4 annotation: querying Bioconductor annotation DB for ", gpl_id)
+    bioc_result <- annotate_with_bioc_db(rownames(expr_matrix), gpl_id)
+    if (!is.null(bioc_result) && nrow(bioc_result) > 0) {
+      probe2gene <- bioc_result
+      gene_mapped <- TRUE
+      anno_tier <- 4L; anno_method <- paste0("BioC_DB:", gpl_to_bioc_package(gpl_id))
     } else {
-      anno_reasons <- c(anno_reasons, "Tier 4: AnnoProbe not installed")
+      pkg <- gpl_to_bioc_package(gpl_id)
+      if (is.null(pkg)) {
+        anno_reasons <- c(anno_reasons, paste0("Tier 4: no Bioconductor annotation DB for ", gpl_id))
+      } else {
+        anno_reasons <- c(anno_reasons, paste0("Tier 4: ", pkg, " not installed or returned no mappings"))
+      }
     }
   }
 
