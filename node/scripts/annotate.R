@@ -192,10 +192,16 @@ try_get_gpl_suppl <- function(gpl, gpl_table, id_col, destdir = NULL) {
   # Check size before download
   tmp <- tempfile(fileext = ".gz")
   h <- tryCatch(curl::curl_fetch_disk(suppl_url, tmp), error = function(e) NULL)
-  if (is.null(h)) {
-    # Fallback to base R download
-    tryCatch(download.file(suppl_url, tmp, method = "auto", quiet = TRUE),
-             error = function(e) { message("  Download failed"); return(NULL) })
+  dl_ok <- !is.null(h) && h$status_code == 200
+  if (!dl_ok) {
+    # Fallback to base R download (handles FTP better)
+    dl_result <- tryCatch(
+      download.file(suppl_url, tmp, method = "auto", quiet = TRUE, mode = "wb"),
+      error = function(e) { message("  Download failed: ", e$message); NULL }
+    )
+    if (is.null(dl_result) || dl_result != 0) {
+      unlink(tmp); return(NULL)
+    }
   }
 
   file_size <- file.info(tmp)$size
@@ -206,10 +212,21 @@ try_get_gpl_suppl <- function(gpl, gpl_table, id_col, destdir = NULL) {
     unlink(tmp); return(NULL)
   }
 
-  # Parse
-  result <- tryCatch(parse_gpl_suppl_soft(gzfile(tmp)), error = function(e) {
-    message("  Parse failed: ", e$message); NULL
-  })
+  # Parse (use system gunzip — R's gzfile() can fail on some gzip files)
+  tmp_txt <- tempfile(fileext = ".txt")
+  gunzip_ok <- system2("gunzip", c("-c", shQuote(tmp)), stdout = tmp_txt, stderr = FALSE) == 0
+  suppl_lines <- if (gunzip_ok && file.exists(tmp_txt)) {
+    tryCatch(readLines(tmp_txt), error = function(e) { message("  Read failed: ", e$message); NULL })
+  } else {
+    # Fallback: try R's gzfile
+    tryCatch(readLines(gzfile(tmp)), error = function(e) { message("  Read failed: ", e$message); NULL })
+  }
+  unlink(tmp_txt)
+  result <- if (!is.null(suppl_lines)) {
+    tryCatch(parse_gpl_suppl_soft(suppl_lines), error = function(e) {
+      message("  Parse failed: ", e$message); NULL
+    })
+  }
   unlink(tmp)
 
   if (is.null(result) || nrow(result) == 0) return(NULL)
@@ -230,8 +247,8 @@ try_get_gpl_suppl <- function(gpl, gpl_table, id_col, destdir = NULL) {
 #' @param lines Character vector of SOFT file lines (or path to file)
 #' @return data.frame with probe_id and gene_symbol, or NULL
 parse_gpl_suppl_soft <- function(lines_or_path) {
-  # If given a file path, read it
-  if (length(lines_or_path) == 1 && file.exists(lines_or_path)) {
+  # If given a file path (character string), read it
+  if (is.character(lines_or_path) && length(lines_or_path) == 1 && file.exists(lines_or_path)) {
     lines_or_path <- readLines(lines_or_path, warn = FALSE)
   }
 
@@ -248,7 +265,11 @@ parse_gpl_suppl_soft <- function(lines_or_path) {
   # Check for gene symbol column
   symbol_col <- grep("GENE_SYMBOL|gene_symbol|Gene Symbol|SYMBOL", headers, ignore.case = TRUE)[1]
   id_col <- grep("^ID$", headers, ignore.case = FALSE)[1]
-  if (is.na(symbol_col) || is.na(id_col)) return(NULL)
+  if (is.na(symbol_col)) return(NULL)
+  # Use NAME column as probe_id if available (Agilent suppl files use row numbers as ID)
+  name_col <- grep("^NAME$", headers, ignore.case = FALSE)[1]
+  if (!is.na(name_col)) id_col <- name_col
+  if (is.na(id_col)) return(NULL)
 
   # Parse data rows (skip header, stop at table_end or !)
   data_start <- header_line + 1
