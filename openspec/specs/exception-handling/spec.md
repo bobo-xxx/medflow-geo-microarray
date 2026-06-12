@@ -108,14 +108,24 @@ The system SHALL report partial success when some platforms fail.
 
 ### Requirement: Structured NDJSON exception reporting
 
-The system SHALL report all exceptions as structured NDJSON with machine-readable codes. Exception codes SHALL be emitted at the error site, not deferred to the caller.
+The system SHALL report exceptions at the correct NDJSON level based on action severity:
 
-#### Scenario: Exception reported at error site
+- `retry` → `level: "retry"` (diagnostic, not terminal)
+- `skip_with_warning` → `level: "decision"` (skip, pipeline continues)
+- `halt` → `level: "exception"` (terminal, calls `quit()`)
+- `prompt` → `level: "prompt"` (awaiting user input)
+- `escalate` → `level: "exception"` (escalate to human, no quit)
 
-- **WHEN** any exception condition is detected
-- **THEN** the NDJSON line SHALL be emitted immediately at the detection point
-- **AND** include `code`, `nature`, `action`, and `msg` fields
-- **AND** the `nature` field SHALL be one of: data_insufficient, data_corrupt, data_mismatch, env_bug, network, resource
+#### Scenario: Retry does not emit exception level
+
+- **WHEN** a transient network error triggers a retry
+- **THEN** the NDJSON line SHALL have `level: "retry"` not `level: "exception"`
+
+#### Scenario: Halt terminates the process
+
+- **WHEN** an exception with `action: "halt"` is reported
+- **AND** `dry_run` is FALSE
+- **THEN** the system SHALL call `quit(status = exit_code)`
 
 ### Requirement: Error sites SHALL emit structured NDJSON exceptions
 
