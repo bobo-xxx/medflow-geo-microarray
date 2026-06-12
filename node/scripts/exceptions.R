@@ -3,6 +3,22 @@
 # Categories: A=Network, B=Data, C=Resource, W=Write, L=Lifecycle, E=Environment
 # All exceptions flow through report_exception_ndjson() for machine-readable output.
 
+#' Execute a function with a timeout (best-effort via R's withTimeout)
+#'
+#' Uses R.utils::withTimeout if available, otherwise runs without timeout.
+#' On timeout, raises an error caught by retry_with_backoff().
+#'
+#' @param fn Function to execute
+#' @param timeout_sec Timeout in seconds (default 300)
+#' @return Result of fn()
+with_geo_timeout <- function(fn, timeout_sec = 300) {
+  if (requireNamespace("R.utils", quietly = TRUE)) {
+    R.utils::withTimeout(fn(), timeout = timeout_sec)
+  } else {
+    fn()
+  }
+}
+
 #' Retry a function with exponential backoff
 #'
 #' @param fn Function to retry (no arguments)
@@ -49,13 +65,14 @@ safe_write_csv <- function(data, path, min_ratio = 0.5) {
   expected_min <- max(n_cells * 4, 10)
 
   # Write to temp file
-  tryCatch(
-    write.csv(data, file = tmp, row.names = TRUE),
-    error = function(e) {
-      message("Failed to write temp file: ", e$message)
-      return(FALSE)
-    }
-  )
+  write_ok <- tryCatch({
+    write.csv(data, file = tmp, row.names = TRUE)
+    TRUE
+  }, error = function(e) {
+    message("Failed to write temp file: ", e$message)
+    FALSE
+  })
+  if (!write_ok) return(FALSE)
 
   # Verify size
   actual_size <- file.info(tmp)$size
@@ -102,7 +119,7 @@ validate_cache <- function(gse_dir) {
 #'
 #' @return List with status ("ok", "error"), missing packages, and details
 check_environment <- function() {
-  required <- c("GEOquery", "Biobase", "limma")
+  required <- c("GEOquery", "Biobase", "limma", "affy")
   missing  <- character(0)
 
   for (pkg in required) {
@@ -126,25 +143,10 @@ check_environment <- function() {
 #' @param gse_dir Current GSE output directory
 #' @return NULL (side effect: registers handlers)
 register_signal_handlers <- function(gse_dir = NULL) {
-  # SIGTERM: clean exit, delete partial downloads, write checkpoint
-  tryCatch({
-    signal_on_terminate <- function() {
-      message("\nSIGTERM received. Cleaning up...")
-      # Delete partial RAW.tar downloads
-      tar_files <- list.files(dirname(gse_dir), pattern = "_RAW\\.tar$",
-                              full.names = TRUE)
-      for (f in tar_files) {
-        if (file.exists(f) && file.info(f)$size < 10000) unlink(f)
-      }
-      # Write checkpoint
-      if (!is.null(gse_dir)) {
-        writeLines("interrupted", file.path(gse_dir, ".fetch_interrupted"))
-      }
-      quit(status = 0)
-    }
-    # R doesn't have portable signal handling — document the pattern
-    # Actual signal handling is platform-specific (use later::defer, withr::defer)
-  }, error = function(e) NULL)
+  # R does not have portable OS signal handling (SIGTERM/SIGINT).
+  # Cleanup on interrupt is handled via on.exit() at the call site.
+  # This function exists as a documented hook for platform-specific
+  # implementations (e.g., use later::defer or withr::defer).
   invisible(NULL)
 }
 

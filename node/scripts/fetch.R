@@ -89,11 +89,8 @@ fetch_geo_data <- function(opts) {
 
   # ---- Tier 2: Try processed series matrix ----
   message("Tier 2: Attempting series matrix download...")
-  gse_matrix <- tryCatch({
+  gse_matrix <- retry_with_backoff(function() {
     getGEO(gse_id, GSEMatrix = TRUE)
-  }, error = function(e) {
-    message("Failed to get series matrix: ", e$message)
-    NULL
   })
 
   if (!is.null(gse_matrix) && length(gse_matrix) > 0) {
@@ -101,13 +98,17 @@ fetch_geo_data <- function(opts) {
     result$status <- "success_matrix"
 
     for (i in seq_along(gse_matrix)) {
+      write_checkpoint(out_gse_dir, "process_platform", "in_progress")
       eset    <- gse_matrix[[i]]
       gpl_id  <- annotation(eset)
       gpl_suffix <- if (length(gse_matrix) > 1) paste0("_", gpl_id) else ""
 
       process_expression_set(exprs(eset), eset, gpl_id, gpl_suffix,
                              out_gse_dir, result)
+      write_checkpoint(out_gse_dir, paste0("process_", gpl_id), "complete")
     }
+    # Write completion sentinel
+    writeLines(as.character(Sys.time()), file.path(out_gse_dir, ".fetch_complete"))
     return(result)
   }
 
@@ -253,7 +254,7 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
   # Save probe-level
   gse_id <- result$gse_id
   probe_file <- file.path(out_gse_dir, paste0("expr_probe_", gse_id, gpl_suffix, ".csv"))
-  safe_write_csv(expr_matrix, probe_file)
+  if (!safe_write_csv(expr_matrix, probe_file)) result$warnings <- c(result$warnings, "Failed to write probe matrix")
   result$probe_file <- c(result$probe_file, probe_file)
 
   # 5-tier gene annotation using fData from ExpressionSet
@@ -313,7 +314,7 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
     expr_gene <- aggregate_probe_to_gene(expr_matrix, probe2gene)
     if (!is.null(expr_gene) && validate_gene_expression(expr_gene)) {
       gene_file <- file.path(out_gse_dir, paste0("expr_gene_", gse_id, gpl_suffix, ".csv"))
-      safe_write_csv(expr_gene, gene_file)
+      if (!safe_write_csv(expr_gene, gene_file)) result$warnings <- c(result$warnings, "Failed to write gene matrix")
       result$gene_file <- c(result$gene_file, gene_file)
     }
   }
@@ -322,7 +323,7 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
   pdata <- pData(eset)
   if (!is.null(pdata) && nrow(pdata) > 0) {
     meta_file <- file.path(out_gse_dir, paste0("metadata_", gse_id, gpl_suffix, ".csv"))
-    safe_write_csv(pdata, meta_file)
+    if (!safe_write_csv(pdata, meta_file)) result$warnings <- c(result$warnings, "Failed to write metadata")
     result$meta_file <- c(result$meta_file, meta_file)
   }
 
@@ -358,7 +359,7 @@ process_raw_matrix <- function(expr_matrix, gpl_guess, gpl_suffix,
   colnames(expr_matrix) <- make.names(colnames(expr_matrix), unique = TRUE)
 
   probe_file <- file.path(out_gse_dir, paste0("expr_probe_", gse_id, gpl_suffix, ".csv"))
-  safe_write_csv(expr_matrix, probe_file)
+  if (!safe_write_csv(expr_matrix, probe_file)) result$warnings <- c(result$warnings, "Failed to write probe matrix")
   result$probe_file <- c(result$probe_file, probe_file)
 
   # GPL annotation only (no fData available from raw files)
@@ -368,7 +369,7 @@ process_raw_matrix <- function(expr_matrix, gpl_guess, gpl_suffix,
       expr_gene <- aggregate_probe_to_gene(expr_matrix, gpl_table)
       if (!is.null(expr_gene) && validate_gene_expression(expr_gene)) {
         gene_file <- file.path(out_gse_dir, paste0("expr_gene_", gse_id, gpl_suffix, ".csv"))
-        safe_write_csv(expr_gene, gene_file)
+        if (!safe_write_csv(expr_gene, gene_file)) result$warnings <- c(result$warnings, "Failed to write gene matrix")
         result$gene_file <- c(result$gene_file, gene_file)
       }
     }
