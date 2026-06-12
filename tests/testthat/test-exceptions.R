@@ -52,7 +52,15 @@ describe("check_environment", {
 describe("detect_exception", {
   it("detects timeout", { r <- detect_exception("connection timed out"); expect_equal(r$code, "A1_TIMEOUT") })
   it("detects 404", { r <- detect_exception("HTTP 404"); expect_equal(r$code, "A2_NOT_FOUND") })
+  it("detects all attempts exhausted", { r <- detect_exception("All attempts exhausted"); expect_equal(r$code, "A3_FAILED") })
+  it("detects methylation BPM", { r <- detect_exception("Methylation BPM present"); expect_equal(r$code, "B2_METHYLATION") })
+  it("detects file not found", { r <- detect_exception("File not found: /path"); expect_equal(r$code, "B3_EMPTY") })
+  it("detects all tiers failed", { r <- detect_exception("All data retrieval methods failed"); expect_equal(r$code, "T5_ALL_FAILED") })
+  it("detects metadata only fallback", { r <- detect_exception("returning metadata only"); expect_equal(r$code, "T5_ALL_FAILED") })
+  it("detects disk full", { r <- detect_exception("No space left on device"); expect_equal(r$code, "W001_DISK_FULL") })
   it("detects perm denied", { r <- detect_exception("Permission denied"); expect_equal(r$code, "W002_PERM_DENIED") })
+  it("detects thread error", { r <- detect_exception("pthread_create failed"); expect_equal(r$code, "C3_THREAD") })
+  it("detects unreachable", { r <- detect_exception("ftp.ncbi.nlm.nih.gov unreachable"); expect_equal(r$code, "E803_ENV_NET") })
   it("returns UNKNOWN for unrecognized", { r <- detect_exception("random error"); expect_equal(r$code, "UNKNOWN") })
 })
 

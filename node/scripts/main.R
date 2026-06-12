@@ -217,14 +217,14 @@ do_clean <- function(opts) {
 # -------------------------------------------------------------------
 
 main <- function() {
-  # Environment check
+  opts <- parse_args()
+
+  # Environment check (after arg parsing — help text shouldn't require packages)
   env <- check_environment()
   if (env$status == "error") {
     report_exception_ndjson("E801_ENV_PKG", "env_bug", "halt", env$msg)
     quit(status = 3)
   }
-
-  opts <- parse_args()
 
   switch(opts$subcommand,
     fetch = do_fetch(opts),

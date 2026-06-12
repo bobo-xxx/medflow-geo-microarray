@@ -75,7 +75,7 @@ process_raw_files <- function(files, out_dir, gse_id) {
   raw_type <- detect_raw_type(files)
   message("Detected raw type: ", raw_type)
 
-  switch(raw_type,
+  result <- switch(raw_type,
     "affymetrix"    = process_affy(files, out_dir, gse_id),
     "illumina"      = process_illumina(files, out_dir, gse_id),
     "illumina_txt"  = process_illumina_txt(files, out_dir, gse_id),
@@ -88,6 +88,10 @@ process_raw_files <- function(files, out_dir, gse_id) {
     list(status = "error",
       msg = paste("Unknown raw file type. Files:", paste(head(basename(files), 5), collapse = ", ")))
   )
+  if (result$status == "error") {
+    report_and_classify(result$msg)
+  }
+  result
 }
 
 #' Process Affymetrix CEL files with RMA

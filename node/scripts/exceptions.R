@@ -157,14 +157,31 @@ register_signal_handlers <- function(gse_dir = NULL) {
 detect_exception <- function(stderr_output) {
   txt <- tolower(paste(stderr_output, collapse = " "))
 
+  # Data (before network "not found" to avoid file-not-found matching A2)
+  if (grepl("file.not.found|empty|no.rows|no.columns", txt))
+    return(list(code = "B3_EMPTY", nature = "data_insufficient", action = "skip_with_warning"))
+  if (grepl("methylation.bpm|bpm.present", txt))
+    return(list(code = "B2_METHYLATION", nature = "data_mismatch", action = "skip_with_warning"))
+  if (grepl("unknown.*format|cannot.*read|corrupt", txt))
+    return(list(code = "B1_FORMAT", nature = "data_corrupt", action = "skip_with_warning"))
+  if (grepl("all.data.retrieval|metadata.only|returning.metadata", txt))
+    return(list(code = "T5_ALL_FAILED", nature = "data_insufficient", action = "halt"))
+
+  # Network
   if (grepl("timeout|timed.out|connection.refused", txt))
     return(list(code = "A1_TIMEOUT", nature = "network", action = "retry"))
-  if (grepl("404|not.found", txt))
+  if (grepl("http.*404|404.*not|specified.*not.found", txt))
     return(list(code = "A2_NOT_FOUND", nature = "network", action = "skip_with_warning"))
+  if (grepl("all.attempts.exhausted", txt))
+    return(list(code = "A3_FAILED", nature = "network", action = "prompt"))
+  if (grepl("unreachable|dns.fail|cannot.resolve", txt))
+    return(list(code = "E803_ENV_NET", nature = "network", action = "halt"))
+
+  # Resource
+  if (grepl("disk.full|no.space|write.error|write.*fail", txt))
+    return(list(code = "W001_DISK_FULL", nature = "resource", action = "halt"))
   if (grepl("permission.denied|access.denied", txt))
     return(list(code = "W002_PERM_DENIED", nature = "resource", action = "halt"))
-  if (grepl("disk.full|no.space", txt))
-    return(list(code = "W001_DISK_FULL", nature = "resource", action = "halt"))
   if (grepl("pthread_create|thread", txt))
     return(list(code = "C3_THREAD", nature = "resource", action = "retry"))
 
