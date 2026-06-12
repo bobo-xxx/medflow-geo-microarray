@@ -327,6 +327,7 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
     if (!is.null(gpl_table) && nrow(gpl_table) > 0 &&
         "gene_symbol" %in% colnames(gpl_table) &&
         any(!is.na(gpl_table$gene_symbol) & gpl_table$gene_symbol != "")) {
+      gpl_table$gene_symbol <- clean_gene_symbols(gpl_table$gene_symbol)
       probe2gene <- gpl_table; gene_mapped <- TRUE
       anno_tier <- 3L; anno_method <- "GPL_table"
     } else {
