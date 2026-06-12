@@ -18,6 +18,7 @@
 #'         n_rows, n_cols, input_path, output_path
 run_clean <- function(input, output = NULL) {
   if (!file.exists(input)) {
+    report_and_classify(paste("File not found:", input))
     return(list(status = "error", msg = paste("File not found:", input)))
   }
 

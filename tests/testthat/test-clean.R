@@ -1,6 +1,7 @@
 library(testthat)
 
 source("../../node/scripts/normalize.R")
+source("../../node/scripts/exceptions.R")
 source("../../node/scripts/clean.R")
 
 describe("run_clean", {

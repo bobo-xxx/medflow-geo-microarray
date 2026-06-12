@@ -200,6 +200,19 @@ read_checkpoint <- function(gse_dir) {
   }))
 }
 
+#' Detect, classify, and report an exception in one call
+#'
+#' Convenience wrapper: detect_exception() → report_exception_ndjson().
+#' Call this at every error site in the pipeline.
+#'
+#' @param msg Error message or stderr output to classify
+#' @return The detected exception list (invisibly)
+report_and_classify <- function(msg) {
+  ex <- detect_exception(msg)
+  report_exception_ndjson(ex$code, ex$nature, ex$action, msg)
+  invisible(ex)
+}
+
 #' Report an exception as structured NDJSON
 #'
 #' @param code Exception code (e.g., "A1_TIMEOUT")

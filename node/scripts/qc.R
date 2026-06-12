@@ -160,6 +160,7 @@ qc_decision <- function(flags) {
 #' @return List with status, decision, metrics, flags
 run_qc <- function(input_path) {
   if (!file.exists(input_path)) {
+    report_and_classify(paste("File not found:", input_path))
     return(list(status = "error", msg = paste("File not found:", input_path)))
   }
 

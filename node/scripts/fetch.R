@@ -110,6 +110,10 @@ fetch_geo_data <- function(opts) {
     getGEO(gse_id, GSEMatrix = TRUE)
   })
 
+  if (is.null(gse_matrix)) {
+    report_and_classify("All attempts exhausted: getGEO() failed for series matrix")
+  }
+
   if (!is.null(gse_matrix) && length(gse_matrix) > 0) {
     message("Series matrix retrieved: ", length(gse_matrix), " platform(s)")
     result$status <- "success_matrix"
@@ -177,6 +181,7 @@ fetch_geo_data <- function(opts) {
     if (length(raw_files) > 0) {
       # Check for methylation before processing
       if (is_methylation(raw_files)) {
+        report_and_classify("Methylation BPM present — not an expression array")
         result$status <- "skipped_methylation"
         return(result)
       }
@@ -203,6 +208,7 @@ fetch_geo_data <- function(opts) {
 
   # ---- Tier 5: Metadata only ----
   message("Tier 5: Returning metadata only...")
+  report_and_classify("All data retrieval methods failed — returning metadata only")
   result$status <- "metadata_only"
   result$warnings <- c(result$warnings,
     "No expression data available; returning metadata only")
@@ -270,6 +276,7 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
   gse_id <- result$gse_id
   probe_file <- file.path(out_gse_dir, paste0("expr_probe_", gse_id, gpl_suffix, ".csv"))
   if (!safe_write_csv(expr_matrix, probe_file)) result$warnings <- c(result$warnings, "Failed to write probe matrix")
+  report_and_classify("disk full or write error — probe matrix save failed")
   result$probe_file <- c(result$probe_file, probe_file)
 
   # 5-tier gene annotation using fData from ExpressionSet
@@ -375,6 +382,7 @@ process_raw_matrix <- function(expr_matrix, gpl_guess, gpl_suffix,
 
   probe_file <- file.path(out_gse_dir, paste0("expr_probe_", gse_id, gpl_suffix, ".csv"))
   if (!safe_write_csv(expr_matrix, probe_file)) result$warnings <- c(result$warnings, "Failed to write probe matrix")
+  report_and_classify("disk full or write error — probe matrix save failed")
   result$probe_file <- c(result$probe_file, probe_file)
 
   # GPL annotation only (no fData available from raw files)

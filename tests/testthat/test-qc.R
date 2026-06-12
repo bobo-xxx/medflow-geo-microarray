@@ -1,6 +1,7 @@
 library(testthat)
 
 source("../../node/scripts/normalize.R")  # for detect_expr_type
+source("../../node/scripts/exceptions.R")
 source("../../node/scripts/qc.R")
 
 describe("compute_qc_metrics", {
