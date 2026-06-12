@@ -1,14 +1,14 @@
 ### Task 1: Create node/scripts/exceptions.R
 
-- [ ] `retry_with_backoff(fn, max_attempts, base_delay)` — exponential backoff wrapper
-- [ ] `with_geo_timeout(fn, timeout_sec)` — timeout wrapper for GEO calls
-- [ ] `safe_write_csv(data, path)` — atomic write with temp file + verify + rename
-- [ ] `validate_cache(gse_dir)` — filelist.txt size check + .fetch_complete sentinel
-- [ ] `check_environment()` — package availability, network reachability, R version
-- [ ] `register_signal_handlers()` — SIGTERM/SIGINT handlers
-- [ ] `detect_exception(stderr_output)` — classify failure by pattern
-- [ ] `write_checkpoint(gse_dir, step, status)` / `read_checkpoint(gse_dir)`
-- [ ] `report_exception_ndjson(code, nature, action, msg, ...)` — structured NDJSON
+- [x] `retry_with_backoff(fn, max_attempts, base_delay)` — exponential backoff wrapper
+- [x] `with_geo_timeout(fn, timeout_sec)` — timeout wrapper for GEO calls
+- [x] `safe_write_csv(data, path)` — atomic write with temp file + verify + rename
+- [x] `validate_cache(gse_dir)` — filelist.txt size check + .fetch_complete sentinel
+- [x] `check_environment()` — package availability, network reachability, R version
+- [x] `register_signal_handlers()` — SIGTERM/SIGINT handlers
+- [x] `detect_exception(stderr_output)` — classify failure by pattern
+- [x] `write_checkpoint(gse_dir, step, status)` / `read_checkpoint(gse_dir)`
+- [x] `report_exception_ndjson(code, nature, action, msg, ...)` — structured NDJSON
 
 ### Task 2: Wire exceptions into main.R, fetch.R, report.R
 
@@ -25,11 +25,11 @@
 
 ### Task 4: Create tests/testthat/test-exceptions.R
 
-- [ ] `retry_with_backoff`: success on 2nd attempt, all exhausted
-- [ ] `safe_write_csv`: normal write, disk full simulation, permission denied
-- [ ] `validate_cache`: valid sentinel, missing sentinel, size mismatch
-- [ ] `check_environment`: all OK, missing package, no network
-- [ ] `report_exception_ndjson`: valid NDJSON with all required fields
+- [x] `retry_with_backoff`: success on 2nd attempt, all exhausted
+- [x] `safe_write_csv`: normal write, disk full simulation, permission denied
+- [x] `validate_cache`: valid sentinel, missing sentinel, size mismatch
+- [x] `check_environment`: all OK, missing package, no network
+- [x] `report_exception_ndjson`: valid NDJSON with all required fields
 - [ ] Prompt contract: valid JSON format, option structure, timeout behavior
 
 ### Task 5: Full test suite verification
