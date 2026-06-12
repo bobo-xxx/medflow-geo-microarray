@@ -12,16 +12,16 @@
 
 ### Task 2: Wire exceptions into main.R, fetch.R, report.R
 
-- [ ] `main.R`: call `check_environment()` and `register_signal_handlers()` at startup
-- [ ] `fetch.R`: wrap all GEO calls in `with_geo_timeout()` + `retry_with_backoff()`
-- [ ] `fetch.R`: replace `write.csv()` with `safe_write_csv()`
-- [ ] `fetch.R`: call `validate_cache()` before Tier 1
-- [ ] `report.R`: add `report_exception_ndjson()` and `report_prompt()` functions
+- [x] `main.R`: call `check_environment()` and `register_signal_handlers()` at startup
+- [x] `fetch.R`: wrap all GEO calls in `with_geo_timeout()` + `retry_with_backoff()`
+- [x] `fetch.R`: replace `write.csv()` with `safe_write_csv()`
+- [x] `fetch.R`: call `validate_cache()` before Tier 1
+- [x] `report.R`: add `report_exception_ndjson()` and `report_prompt()` functions
 
 ### Task 3: Update SKILL.md exceptions
 
-- [ ] Replace pattern-based exceptions with structured codes (A1-A4, B1-B4, C3, W1-W4, L1-L3, E1-E4)
-- [ ] Add `node/scripts/exceptions.R` to entry description
+- [x] Replace pattern-based exceptions with structured codes (A1-A4, B1-B4, C3, W1-W4, L1-L3, E1-E4)
+- [x] Add `node/scripts/exceptions.R` to entry description
 
 ### Task 4: Create tests/testthat/test-exceptions.R
 
@@ -30,10 +30,10 @@
 - [x] `validate_cache`: valid sentinel, missing sentinel, size mismatch
 - [x] `check_environment`: all OK, missing package, no network
 - [x] `report_exception_ndjson`: valid NDJSON with all required fields
-- [ ] Prompt contract: valid JSON format, option structure, timeout behavior
+- [x] Prompt contract: valid JSON format, option structure, timeout behavior
 
 ### Task 5: Full test suite verification
 
-- [ ] All existing tests pass
-- [ ] New exception tests pass
-- [ ] End-to-end smoke test on real data
+- [x] All existing tests pass
+- [x] New exception tests pass
+- [x] End-to-end smoke test on real data

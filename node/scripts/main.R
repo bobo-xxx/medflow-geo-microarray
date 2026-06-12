@@ -22,6 +22,7 @@ source(file.path(script_dir, "species.R"))
 source(file.path(script_dir, "annotate.R"))
 source(file.path(script_dir, "pipeline.R"))
 source(file.path(script_dir, "raw.R"))
+source(file.path(script_dir, "exceptions.R"))
 source(file.path(script_dir, "fetch.R"))
 source(file.path(script_dir, "qc.R"))
 source(file.path(script_dir, "clean.R"))
@@ -216,6 +217,13 @@ do_clean <- function(opts) {
 # -------------------------------------------------------------------
 
 main <- function() {
+  # Environment check
+  env <- check_environment()
+  if (env$status == "error") {
+    report_exception_ndjson("E801_ENV_PKG", "env_bug", "halt", env$msg)
+    quit(status = 3)
+  }
+
   opts <- parse_args()
 
   switch(opts$subcommand,

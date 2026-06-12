@@ -253,7 +253,7 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
   # Save probe-level
   gse_id <- result$gse_id
   probe_file <- file.path(out_gse_dir, paste0("expr_probe_", gse_id, gpl_suffix, ".csv"))
-  write.csv(expr_matrix, file = probe_file, row.names = TRUE)
+  safe_write_csv(expr_matrix, probe_file)
   result$probe_file <- c(result$probe_file, probe_file)
 
   # 5-tier gene annotation using fData from ExpressionSet
@@ -313,7 +313,7 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
     expr_gene <- aggregate_probe_to_gene(expr_matrix, probe2gene)
     if (!is.null(expr_gene) && validate_gene_expression(expr_gene)) {
       gene_file <- file.path(out_gse_dir, paste0("expr_gene_", gse_id, gpl_suffix, ".csv"))
-      write.csv(expr_gene, file = gene_file, row.names = TRUE)
+      safe_write_csv(expr_gene, gene_file)
       result$gene_file <- c(result$gene_file, gene_file)
     }
   }
@@ -322,7 +322,7 @@ process_expression_set <- function(expr_matrix, eset, gpl_id, gpl_suffix,
   pdata <- pData(eset)
   if (!is.null(pdata) && nrow(pdata) > 0) {
     meta_file <- file.path(out_gse_dir, paste0("metadata_", gse_id, gpl_suffix, ".csv"))
-    write.csv(pdata, file = meta_file, row.names = TRUE)
+    safe_write_csv(pdata, meta_file)
     result$meta_file <- c(result$meta_file, meta_file)
   }
 
@@ -358,7 +358,7 @@ process_raw_matrix <- function(expr_matrix, gpl_guess, gpl_suffix,
   colnames(expr_matrix) <- make.names(colnames(expr_matrix), unique = TRUE)
 
   probe_file <- file.path(out_gse_dir, paste0("expr_probe_", gse_id, gpl_suffix, ".csv"))
-  write.csv(expr_matrix, file = probe_file, row.names = TRUE)
+  safe_write_csv(expr_matrix, probe_file)
   result$probe_file <- c(result$probe_file, probe_file)
 
   # GPL annotation only (no fData available from raw files)
@@ -368,7 +368,7 @@ process_raw_matrix <- function(expr_matrix, gpl_guess, gpl_suffix,
       expr_gene <- aggregate_probe_to_gene(expr_matrix, gpl_table)
       if (!is.null(expr_gene) && validate_gene_expression(expr_gene)) {
         gene_file <- file.path(out_gse_dir, paste0("expr_gene_", gse_id, gpl_suffix, ".csv"))
-        write.csv(expr_gene, file = gene_file, row.names = TRUE)
+        safe_write_csv(expr_gene, gene_file)
         result$gene_file <- c(result$gene_file, gene_file)
       }
     }
