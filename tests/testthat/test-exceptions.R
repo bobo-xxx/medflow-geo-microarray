@@ -47,6 +47,13 @@ describe("check_environment", {
     r <- check_environment()
     expect_equal(r$status, "error"); expect_match(paste(r$missing, collapse=""), "affy")
   })
+  it("warns when AnnoProbe missing (recommended, not required)", {
+    local_mocked_bindings(requireNamespace = function(pkg, ...) pkg != "AnnoProbe", .package = "base")
+    r <- check_environment()
+    expect_equal(r$status, "ok")  # still OK — AnnoProbe is recommended
+    expect_true(length(r$warnings) > 0)
+    expect_match(r$warnings[1], "AnnoProbe")
+  })
 })
 
 describe("detect_exception", {

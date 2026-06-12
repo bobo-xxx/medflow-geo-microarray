@@ -119,8 +119,9 @@ validate_cache <- function(gse_dir) {
 #'
 #' @return List with status ("ok", "error"), missing packages, and details
 check_environment <- function() {
-  required <- c("GEOquery", "Biobase", "limma", "affy")
-  missing  <- character(0)
+  required  <- c("GEOquery", "Biobase", "limma", "affy")
+  missing   <- character(0)
+  warnings  <- character(0)
 
   for (pkg in required) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
@@ -128,12 +129,17 @@ check_environment <- function() {
     }
   }
 
+  # Recommended but not required: AnnoProbe enables Tier 4 annotation
+  if (!requireNamespace("AnnoProbe", quietly = TRUE)) {
+    warnings <- c(warnings, "AnnoProbe not installed — Tier 4 gene annotation unavailable. Install: install.packages('AnnoProbe')")
+  }
+
   if (length(missing) > 0) {
     return(list(status = "error", missing = missing,
       msg = paste("Missing required packages:", paste(missing, collapse = ", "))))
   }
 
-  list(status = "ok", msg = "Environment OK")
+  list(status = "ok", msg = "Environment OK", warnings = warnings)
 }
 
 #' Register signal handlers for graceful shutdown

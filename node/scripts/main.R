@@ -225,6 +225,9 @@ main <- function() {
     report_exception_ndjson("E801_ENV_PKG", "env_bug", "halt", env$msg)
     quit(status = 3)
   }
+  for (w in env$warnings) {
+    report_info(sprintf("Env warning: %s", w))
+  }
 
   switch(opts$subcommand,
     fetch = do_fetch(opts),
