@@ -1,22 +1,4 @@
-# gene-annotation Specification
-
-## Purpose
-TBD - created by archiving change fix-agentic-test-issues. Update Purpose after archive.
-## Requirements
-### Requirement: AnnoProbe pipe alignment in Tier 4
-
-The system SHALL call `AnnoProbe::idmap(gpl_id, type = "pipe")` when AnnoProbe is available, not just check `requireNamespace`.
-
-#### Scenario: AnnoProbe provides gene symbols
-
-- **WHEN** AnnoProbe is installed and the GPL is supported
-- **THEN** `idmap()` SHALL be called with `type = "pipe"`
-- **AND** the resulting probe-to-gene mapping SHALL be used for Tier 4 annotation
-
-#### Scenario: AnnoProbe fails gracefully
-
-- **WHEN** AnnoProbe `idmap()` throws an error
-- **THEN** the system SHALL catch the error and fall through to Tier 5 (probe IDs)
+## MODIFIED Requirements
 
 ### Requirement: Report annotation tier in result metadata
 
@@ -31,6 +13,8 @@ The system SHALL clean gene symbol prefixes (`entg|`, `ref|`, `gb|`) from all an
 
 - **WHEN** BioC annotation DB returns gene symbols with `entg|` prefix
 - **THEN** `clean_gene_symbols()` SHALL strip the prefix before aggregation
+
+## ADDED Requirements
 
 ### Requirement: GPL supplementary file fallback
 
@@ -56,4 +40,3 @@ The system SHALL NOT produce a gene-level expression matrix when annotation fall
 - **WHEN** `annotation_tier == 5` (probe IDs as gene names)
 - **THEN** the gene CSV SHALL NOT be written
 - **AND** only the probe matrix SHALL be produced as authoritative output
-
