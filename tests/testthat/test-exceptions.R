@@ -124,6 +124,36 @@ describe("Flow: safe_write_csv pipeline", {
   })
 })
 
+describe("detect_exception: remaining patterns", {
+  it("detects unknown format", {
+    r <- detect_exception("unknown format: cannot read file")
+    expect_equal(r$code, "B1_FORMAT")
+    expect_equal(r$nature, "data_corrupt")
+  })
+  it("detects corrupt data", {
+    r <- detect_exception("corrupted CEL file detected")
+    expect_equal(r$code, "B1_FORMAT")
+  })
+  it("detects env net unreachable", {
+    r <- detect_exception("ftp.ncbi.nlm.nih.gov unreachable: DNS failure")
+    expect_equal(r$code, "E803_ENV_NET")
+    expect_equal(r$action, "halt")
+  })
+})
+
+describe("Flow: E801_ENV_PKG fires via report_exception_ndjson", {
+  it("emits valid NDJSON for env pkg error", {
+    output <- capture.output(
+      report_exception_ndjson("E801_ENV_PKG", "env_bug", "halt",
+        "Missing required packages: GEOquery"),
+      type = "output"
+    )
+    parsed <- jsonlite::fromJSON(output)
+    expect_equal(parsed$code, "E801_ENV_PKG")
+    expect_equal(parsed$action, "halt")
+  })
+})
+
 describe("Flow: retry wraps fallible ops", {
   it("returns result on eventual success", {
     attempts <- 0
