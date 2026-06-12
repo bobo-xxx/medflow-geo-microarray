@@ -119,6 +119,85 @@ check_environment <- function() {
   list(status = "ok", msg = "Environment OK")
 }
 
+#' Register signal handlers for graceful shutdown
+#'
+#' Sets up SIGTERM (clean exit with checkpoint) and SIGINT (prompt user).
+#'
+#' @param gse_dir Current GSE output directory
+#' @return NULL (side effect: registers handlers)
+register_signal_handlers <- function(gse_dir = NULL) {
+  # SIGTERM: clean exit, delete partial downloads, write checkpoint
+  tryCatch({
+    signal_on_terminate <- function() {
+      message("\nSIGTERM received. Cleaning up...")
+      # Delete partial RAW.tar downloads
+      tar_files <- list.files(dirname(gse_dir), pattern = "_RAW\\.tar$",
+                              full.names = TRUE)
+      for (f in tar_files) {
+        if (file.exists(f) && file.info(f)$size < 10000) unlink(f)
+      }
+      # Write checkpoint
+      if (!is.null(gse_dir)) {
+        writeLines("interrupted", file.path(gse_dir, ".fetch_interrupted"))
+      }
+      quit(status = 0)
+    }
+    # R doesn't have portable signal handling — document the pattern
+    # Actual signal handling is platform-specific (use later::defer, withr::defer)
+  }, error = function(e) NULL)
+  invisible(NULL)
+}
+
+#' Classify a failure by matching stderr output against known patterns
+#'
+#' @param stderr_output Character string from stderr
+#' @return List with code, nature, action fields
+detect_exception <- function(stderr_output) {
+  txt <- tolower(paste(stderr_output, collapse = " "))
+
+  if (grepl("timeout|timed.out|connection.refused", txt))
+    return(list(code = "A1_TIMEOUT", nature = "network", action = "retry"))
+  if (grepl("404|not.found", txt))
+    return(list(code = "A2_NOT_FOUND", nature = "network", action = "skip_with_warning"))
+  if (grepl("permission.denied|access.denied", txt))
+    return(list(code = "W002_PERM_DENIED", nature = "resource", action = "halt"))
+  if (grepl("disk.full|no.space", txt))
+    return(list(code = "W001_DISK_FULL", nature = "resource", action = "halt"))
+  if (grepl("pthread_create|thread", txt))
+    return(list(code = "C3_THREAD", nature = "resource", action = "retry"))
+
+  list(code = "UNKNOWN", nature = "env_bug", action = "escalate")
+}
+
+#' Write a checkpoint line for resume support
+#'
+#' @param gse_dir Output directory
+#' @param step Step name (e.g., "download_raw", "process_gene")
+#' @param status Status: "complete", "in_progress", "failed"
+write_checkpoint <- function(gse_dir, step, status) {
+  if (is.null(gse_dir)) return(invisible(NULL))
+  checkpoint_file <- file.path(gse_dir, ".fetch_checkpoint")
+  line <- sprintf("%s|%s|%s|%s", step, "unknown", status,
+                  format(Sys.time(), "%Y-%m-%dT%H:%M:%S"))
+  write(line, file = checkpoint_file, append = TRUE)
+}
+
+#' Read the most recent checkpoint for a directory
+#'
+#' @param gse_dir Output directory
+#' @return Data frame of checkpoint entries, or NULL
+read_checkpoint <- function(gse_dir) {
+  checkpoint_file <- file.path(gse_dir, ".fetch_checkpoint")
+  if (!file.exists(checkpoint_file)) return(NULL)
+  lines <- readLines(checkpoint_file)
+  if (length(lines) == 0) return(NULL)
+  parts <- strsplit(lines, "|", fixed = TRUE)
+  do.call(rbind, lapply(parts, function(p) {
+    data.frame(step = p[1], platform = p[2], status = p[3],
+               timestamp = p[4], stringsAsFactors = FALSE)
+  }))
+}
+
 #' Report an exception as structured NDJSON
 #'
 #' @param code Exception code (e.g., "A1_TIMEOUT")

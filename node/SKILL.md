@@ -76,33 +76,81 @@ parameters:
     description: NCBI API key for higher rate limits (10 req/s vs 3 req/s)
 
 exceptions:
+  # Network (A)
   - exit_code: 1
-    pattern: "No suppl directory"
-    nature: data_insufficient
+    code: A1_TIMEOUT
+    pattern: "timeout|timed out"
+    nature: network
+    action: retry
+
+  - exit_code: 1
+    code: A2_NOT_FOUND
+    pattern: "not found|404"
+    nature: network
     action: skip_with_warning
 
   - exit_code: 1
+    code: A3_FAILED
+    pattern: "all attempts exhausted"
+    nature: network
+    action: prompt
+
+  # Data (B)
+  - exit_code: 1
+    code: B1_FORMAT
+    pattern: "unknown.*format|cannot.*read|corrupt"
+    nature: data_corrupt
+    action: skip_with_warning
+
+  - exit_code: 1
+    code: B2_METHYLATION
     pattern: "Methylation BPM present"
     nature: data_mismatch
     action: skip_with_warning
 
   - exit_code: 1
-    pattern: "No series matrix"
+    code: B3_EMPTY
+    pattern: "empty|no rows|no columns"
     nature: data_insufficient
     action: skip_with_warning
 
+  # Resource (C)
   - exit_code: 1
-    pattern: "No raw files"
-    nature: data_insufficient
-    action: skip_with_warning
+    code: C3_THREAD
+    pattern: "pthread_create|thread"
+    nature: resource
+    action: retry
+
+  # Write (W)
+  - exit_code: 1
+    code: W001_DISK_FULL
+    pattern: "disk full|no space"
+    nature: resource
+    action: halt
 
   - exit_code: 1
-    pattern: "Corrupted CEL file"
-    nature: data_corrupt
-    action: skip_with_warning
+    code: W002_PERM_DENIED
+    pattern: "permission denied"
+    nature: resource
+    action: halt
 
+  # Environment (E)
+  - exit_code: 3
+    code: E801_ENV_PKG
+    pattern: "Missing required packages"
+    nature: env_bug
+    action: halt
+
+  - exit_code: 1
+    code: E803_ENV_NET
+    pattern: "ftp.ncbi.nlm.nih.gov unreachable"
+    nature: network
+    action: halt
+
+  # Fallback
   - exit_code: 2
-    pattern: "All data retrieval methods failed"
+    code: T5_ALL_FAILED
+    pattern: "All data retrieval methods failed|metadata only"
     nature: data_insufficient
     action: halt
 

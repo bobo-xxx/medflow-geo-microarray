@@ -30,6 +30,32 @@ report_result <- function(status, files = list(), metadata = list(), ...) {
   cat(jsonlite::toJSON(obj, auto_unbox = TRUE), "\n", sep = "")
 }
 
+#' Write a prompt-level NDJSON message for interactive input
+#'
+#' @param code Exception code (e.g., "A3_FAILED")
+#' @param msg Human-readable prompt message
+#' @param options List of option lists, each with choice, label, optional prompt
+#' @param timeout_sec Timeout in seconds (default 300)
+report_prompt <- function(code, msg, options, timeout_sec = 300) {
+  obj <- list(
+    level   = "prompt",
+    code    = code,
+    msg     = msg,
+    options = options,
+    timeout = timeout_sec
+  )
+  cat(jsonlite::toJSON(obj, auto_unbox = TRUE), "\n", sep = "")
+  # In non-interactive mode, return default (first option)
+  if (!interactive() || !isatty(stdin())) {
+    return(if (length(options) > 0) options[[1]] else NULL)
+  }
+  response <- tryCatch(readLines(stdin(), n = 1), error = function(e) NULL)
+  if (!is.null(response) && nchar(response) > 0) {
+    return(jsonlite::fromJSON(response))
+  }
+  if (length(options) > 0) options[[1]] else NULL
+}
+
 #' Write an error-level NDJSON message and exit
 #'
 #' @param msg Error message
