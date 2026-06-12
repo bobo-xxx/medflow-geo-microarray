@@ -142,11 +142,26 @@ check_environment <- function() {
 #'
 #' @param gse_dir Current GSE output directory
 #' @return NULL (side effect: registers handlers)
-register_signal_handlers <- function(gse_dir = NULL) {
-  # R does not have portable OS signal handling (SIGTERM/SIGINT).
-  # Cleanup on interrupt is handled via on.exit() at the call site.
-  # This function exists as a documented hook for platform-specific
-  # implementations (e.g., use later::defer or withr::defer).
+register_cleanup <- function(gse_dir) {
+  if (is.null(gse_dir)) return(invisible(NULL))
+
+  # on.exit() runs on normal exit, error, AND interrupt (Ctrl+C / SIGTERM)
+  on.exit({
+    message("\nCleaning up ", gse_dir, "...")
+    # Delete partial RAW.tar downloads
+    tar_pattern <- "_RAW\\.tar$"
+    tar_files <- list.files(gse_dir, pattern = tar_pattern, full.names = TRUE, recursive = TRUE)
+    for (f in tar_files) {
+      if (file.exists(f) && file.info(f)$size < 10000) {
+        message("  Removing partial download: ", basename(f))
+        unlink(f)
+      }
+    }
+    # Write interrupted checkpoint
+    writeLines("interrupted", file.path(gse_dir, ".fetch_interrupted"))
+    message("  Checkpoint saved. Resumable on next run.")
+  }, add = TRUE)
+
   invisible(NULL)
 }
 

@@ -69,6 +69,7 @@ fetch_geo_data <- function(opts) {
 
   out_gse_dir <- file.path(output_dir, gse_id)
   dir.create(out_gse_dir, recursive = TRUE, showWarnings = FALSE)
+  register_cleanup(out_gse_dir)
 
   result <- list(
     status     = "unknown",
