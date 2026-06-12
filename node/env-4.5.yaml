@@ -29,6 +29,11 @@ dependencies:
   - r-stringr
   - r-tibble
 
+  # AnnoProbe dependencies (pre-installed so CRAN install succeeds)
+  - r-ggpubr
+  - r-dt
+  - r-pheatmap
+
   # YAML parsing (SKILL.md validation)
   - r-yaml
 
